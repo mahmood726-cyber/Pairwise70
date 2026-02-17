@@ -36,6 +36,16 @@ safe_ci <- function(est, se, k) {
   list(lb = est - t_crit * se, ub = est + t_crit * se)
 }
 
+run_with_timeout <- function(expr, timeout_sec) {
+  tryCatch({
+    setTimeLimit(elapsed = timeout_sec, transient = TRUE)
+    on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE), add = TRUE)
+    eval.parent(substitute(expr))
+  }, error = function(e) {
+    list(estimate = NA_real_, se = NA_real_, error = conditionMessage(e))
+  })
+}
+
 qse_meta <- function(yi, vi) {
   k <- length(yi)
   reml <- tryCatch(metafor::rma(yi, vi, method = "REML"), error = function(e) NULL)
@@ -266,8 +276,11 @@ hgam_meta <- function(yi, vi) {
   k <- length(yi)
   if (k < 6) return(list(method = "HGAM", estimate = NA_real_, se = NA_real_))
   q <- rank(vi) / (k + 1)
+  df_spline <- min(4, max(3, floor(k / 8)))
   fit <- tryCatch(
-    metafor::rma(yi, vi, mods = ~ splines::bs(q, df = min(4, max(2, floor(k / 8)))), method = "REML", test = "knha"),
+    suppressWarnings(
+      metafor::rma(yi, vi, mods = ~ splines::bs(q, df = df_spline), method = "REML", test = "knha")
+    ),
     error = function(e) NULL
   )
   if (is.null(fit)) return(list(method = "HGAM", estimate = NA_real_, se = NA_real_))
@@ -438,6 +451,7 @@ main <- function() {
 
   out <- data.table()
   fail <- data.table(dataset = character(), reason = character())
+  method_fail <- data.table(dataset = character(), method = character(), reason = character())
 
   for (nm in data_list) {
     d <- tryCatch({
@@ -465,40 +479,50 @@ main <- function() {
     }
     k <- length(yi)
 
-    reml <- tryCatch({
-      setTimeLimit(elapsed = timeout_sec, transient = TRUE)
-      on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE), add = TRUE)
+    reml <- run_with_timeout({
       fit <- metafor::rma(yi, vi, method = "REML")
       list(estimate = safe_num(coef(fit)), se = safe_num(fit$se))
-    }, error = function(e) list(estimate = NA_real_, se = NA_real_))
+    }, timeout_sec = timeout_sec)
 
-    hksj <- tryCatch({
+    hksj <- run_with_timeout({
       fit <- metafor::rma(yi, vi, method = "REML", test = "knha")
       list(estimate = safe_num(coef(fit)), se = safe_num(fit$se))
-    }, error = function(e) list(estimate = NA_real_, se = NA_real_))
+    }, timeout_sec = timeout_sec)
 
-    qse <- tryCatch(qse_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
-    lth <- tryCatch(lth_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
-    rmr <- tryCatch(rmr_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
-    crt <- tryCatch(crt_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
-    awh <- tryCatch(awh_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
-    mrstack <- tryCatch(mrstack_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
-    safe_res <- tryCatch(safe_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
-    cpc <- tryCatch(cpc_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
-    dtm <- tryCatch(dtm_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
-    bsc <- tryCatch(bsc_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
-    hgam <- tryCatch(hgam_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
-    mtle <- tryCatch(mtle_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
-    pbm <- tryCatch({
-      setTimeLimit(elapsed = timeout_sec, transient = TRUE)
-      on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE), add = TRUE)
+    qse <- run_with_timeout(qse_meta(yi, vi), timeout_sec = timeout_sec)
+    lth <- run_with_timeout(lth_meta(yi, vi), timeout_sec = timeout_sec)
+    rmr <- run_with_timeout(rmr_meta(yi, vi), timeout_sec = timeout_sec)
+    crt <- run_with_timeout(crt_meta(yi, vi), timeout_sec = timeout_sec)
+    awh <- run_with_timeout(awh_meta(yi, vi), timeout_sec = timeout_sec)
+    mrstack <- run_with_timeout(mrstack_meta(yi, vi), timeout_sec = timeout_sec)
+    safe_res <- run_with_timeout(safe_meta(yi, vi), timeout_sec = timeout_sec)
+    cpc <- run_with_timeout(cpc_meta(yi, vi), timeout_sec = timeout_sec)
+    dtm <- run_with_timeout(dtm_meta(yi, vi), timeout_sec = timeout_sec)
+    bsc <- run_with_timeout(bsc_meta(yi, vi), timeout_sec = timeout_sec)
+    hgam <- run_with_timeout(hgam_meta(yi, vi), timeout_sec = timeout_sec)
+    mtle <- run_with_timeout(mtle_meta(yi, vi), timeout_sec = timeout_sec)
+    pbm <- run_with_timeout({
       pbm_meta(yi, vi, n_boot_swa = n_boot_swa)
-    }, error = function(e) list(estimate = NA_real_, se = NA_real_))
-    fatiha <- tryCatch({
-      setTimeLimit(elapsed = timeout_sec, transient = TRUE)
-      on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE), add = TRUE)
+    }, timeout_sec = timeout_sec)
+    fatiha <- run_with_timeout({
       fatiha_meta(yi, vi, n_boot_swa = n_boot_swa)
-    }, error = function(e) list(estimate = NA_real_, se = NA_real_))
+    }, timeout_sec = timeout_sec)
+
+    method_objects <- list(
+      REML = reml, HKSJ = hksj, QSE = qse, LTH = lth, RMR = rmr, CRT = crt,
+      AWH = awh, MRSTACK = mrstack, SAFE = safe_res, CPC = cpc, DTM = dtm,
+      BSC = bsc, HGAM = hgam, MTLE = mtle, PBM = pbm, FATIHA = fatiha
+    )
+    for (mname in names(method_objects)) {
+      obj <- method_objects[[mname]]
+      if (!is.finite(safe_num(obj$estimate))) {
+        method_fail <- rbind(method_fail, data.table(
+          dataset = nm,
+          method = mname,
+          reason = if ("error" %in% names(obj) && nzchar(obj$error)) obj$error else "non_finite_estimate"
+        ))
+      }
+    }
 
     rows <- rbindlist(list(
       eval_row(nm, es$measure, k, "REML", reml$estimate, reml$se, reml$estimate),
@@ -524,13 +548,17 @@ main <- function() {
 
   n_total <- uniqueN(out$dataset)
   reml_baseline <- out[method == "REML", .(dataset, reml_est = estimate)]
+  consensus_dt <- out[is.finite(estimate), .(consensus_est = median(estimate, na.rm = TRUE)), by = dataset]
   out_eval <- merge(out, reml_baseline, by = "dataset", all.x = TRUE, sort = FALSE)
+  out_eval <- merge(out_eval, consensus_dt, by = "dataset", all.x = TRUE, sort = FALSE)
+  out_eval[, abs_shift_vs_consensus := abs(estimate - consensus_est)]
 
   summary_dt <- out_eval[, .(
     n_datasets = uniqueN(dataset[is.finite(estimate)]),
     convergence = mean(is.finite(estimate)),
     median_k = median(k, na.rm = TRUE),
     mean_abs_shift_vs_reml = mean(abs_shift_vs_reml, na.rm = TRUE),
+    mean_abs_shift_vs_consensus = mean(abs_shift_vs_consensus, na.rm = TRUE),
     median_se = median(se[is.finite(se)], na.rm = TRUE),
     sign_flip_rate_vs_reml = mean(sign(estimate) != sign(reml_est), na.rm = TRUE)
   ), by = method]
@@ -542,10 +570,11 @@ main <- function() {
     (x - rx[1]) / (rx[2] - rx[1])
   }
   summary_dt[, score_shift := scale01(mean_abs_shift_vs_reml)]
+  summary_dt[, score_consensus := scale01(mean_abs_shift_vs_consensus)]
   summary_dt[, score_se := scale01(median_se)]
   summary_dt[, score_flip := scale01(sign_flip_rate_vs_reml)]
   summary_dt[, score_convergence := scale01(1 - convergence)]
-  summary_dt[, world_score := 0.40 * score_shift + 0.25 * score_se + 0.20 * score_flip + 0.15 * score_convergence]
+  summary_dt[, world_score := 0.25 * score_shift + 0.25 * score_consensus + 0.20 * score_se + 0.15 * score_flip + 0.15 * score_convergence]
   setorder(summary_dt, world_score)
   summary_dt[, rank := seq_len(.N)]
 
@@ -556,9 +585,10 @@ main <- function() {
   fwrite(out, file.path(out_dir, paste0("nextgen12_realdata_raw_", stamp, ".csv")))
   fwrite(summary_dt, file.path(out_dir, paste0("nextgen12_realdata_summary_", stamp, ".csv")))
   if (nrow(fail) > 0) fwrite(fail, file.path(out_dir, paste0("nextgen12_realdata_failures_", stamp, ".csv")))
+  if (nrow(method_fail) > 0) fwrite(method_fail, file.path(out_dir, paste0("nextgen12_realdata_method_failures_", stamp, ".csv")))
 
   cat("NextGen12 real-data benchmark complete\n")
-  print(summary_dt[, .(rank, method, n_datasets, convergence, mean_abs_shift_vs_reml, median_se, sign_flip_rate_vs_reml, world_score)])
+  print(summary_dt[, .(rank, method, n_datasets, convergence, mean_abs_shift_vs_reml, mean_abs_shift_vs_consensus, median_se, sign_flip_rate_vs_reml, world_score)])
   cat(sprintf("Datasets attempted: %d\n", length(data_list)))
   cat(sprintf("Datasets evaluated: %d\n", uniqueN(out$dataset)))
   cat(sprintf("Datasets in result matrix: %d\n", n_total))
