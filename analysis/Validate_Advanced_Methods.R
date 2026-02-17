@@ -66,6 +66,9 @@ cat(strrep("=", 70), "\n\n")
 # Get list of available datasets
 data_list <- data(package = "Pairwise70")$results[, "Item"]
 args <- commandArgs(trailingOnly = TRUE)
+max_datasets <- NA_integer_
+timeout_sec <- 180L
+max_k <- Inf
 if (length(args) >= 1) {
   max_datasets <- suppressWarnings(as.integer(args[1]))
   if (!is.na(max_datasets) && max_datasets > 0 && max_datasets < length(data_list)) {
@@ -77,13 +80,31 @@ if (length(args) >= 2 && nzchar(args[2])) {
   output_dir <- args[2]
   cat(sprintf("Using custom output directory via CLI argument: %s\n", output_dir))
 }
+if (length(args) >= 3) {
+  timeout_arg <- suppressWarnings(as.integer(args[3]))
+  if (!is.na(timeout_arg) && timeout_arg >= 10) {
+    timeout_sec <- timeout_arg
+  }
+}
+if (length(args) >= 4) {
+  max_k_arg <- suppressWarnings(as.integer(args[4]))
+  if (!is.na(max_k_arg) && max_k_arg >= 3) {
+    max_k <- max_k_arg
+  }
+}
 cat(sprintf("Found %d datasets in Pairwise70\n\n", length(data_list)))
+cat(sprintf("Per-dataset timeout: %ds\n", timeout_sec))
+if (is.finite(max_k)) {
+  cat(sprintf("Max studies per dataset (k cap): %d\n\n", as.integer(max_k)))
+} else {
+  cat("Max studies per dataset (k cap): none\n\n")
+}
 
 ################################################################################
 # SECTION 2: VALIDATION FUNCTION
 ################################################################################
 
-validate_on_dataset <- function(dataset_name, verbose = FALSE) {
+validate_on_dataset <- function(dataset_name, timeout_sec = 180L, max_k = Inf, verbose = FALSE) {
   d <- NULL
 
   # Load dataset
@@ -98,6 +119,8 @@ validate_on_dataset <- function(dataset_name, verbose = FALSE) {
 
   # Determine outcome type and calculate effect sizes
   result <- tryCatch({
+    setTimeLimit(elapsed = timeout_sec, transient = TRUE)
+    on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE), add = TRUE)
 
     # Check available columns
     has_binary_cols <- all(c("Experimental.cases", "Experimental.N",
@@ -157,6 +180,12 @@ validate_on_dataset <- function(dataset_name, verbose = FALSE) {
 
     k <- length(yi)
     if (k < 3) return(NULL)
+    if (is.finite(max_k) && k > max_k) {
+      keep <- order(vi)[seq_len(max_k)]
+      yi <- yi[keep]
+      vi <- vi[keep]
+      k <- length(yi)
+    }
 
     # Run all methods
     methods_results <- list()
@@ -254,19 +283,26 @@ cat("Running validation on all datasets...\n")
 cat("This may take a few minutes.\n\n")
 
 validation_results <- list()
+failure_log <- data.table(dataset = character(), reason = character(), elapsed_sec = numeric())
 n_success <- 0
 n_failed <- 0
 
 pb <- txtProgressBar(min = 0, max = length(data_list), style = 3)
 
 for (i in seq_along(data_list)) {
-  result <- validate_on_dataset(data_list[i])
+  t0 <- proc.time()[["elapsed"]]
+  result <- validate_on_dataset(data_list[i], timeout_sec = timeout_sec, max_k = max_k)
+  elapsed <- proc.time()[["elapsed"]] - t0
 
   if (!is.null(result)) {
     validation_results[[data_list[i]]] <- result
     n_success <- n_success + 1
   } else {
     n_failed <- n_failed + 1
+    failure_log <- rbind(
+      failure_log,
+      data.table(dataset = data_list[i], reason = "error/timeout/insufficient data", elapsed_sec = elapsed)
+    )
   }
 
   setTxtProgressBar(pb, i)
@@ -274,6 +310,11 @@ for (i in seq_along(data_list)) {
 close(pb)
 
 cat(sprintf("\n\nValidation complete: %d successful, %d failed\n\n", n_success, n_failed))
+if (nrow(failure_log) > 0) {
+  cat("Failure summary (first 10):\n")
+  print(head(failure_log, 10))
+  cat("\n")
+}
 
 ################################################################################
 # SECTION 4: AGGREGATE RESULTS
@@ -307,28 +348,34 @@ summary_data <- data.table(
 for (name in names(validation_results)) {
   r <- validation_results[[name]]
   m <- r$methods
+  getm <- function(method_name, field, default = NA_real_) {
+    if (!method_name %in% names(m)) return(default)
+    x <- m[[method_name]][[field]]
+    if (is.null(x) || length(x) == 0) return(default)
+    x[[1]]
+  }
 
   row <- data.table(
     dataset = name,
     k = r$k,
     measure = r$measure,
     I2 = r$I2,
-    estimate_REML = m$REML$estimate,
-    estimate_MWM = m$MWM$estimate,
-    estimate_ARP = m$ARP$estimate,
-    estimate_SIT = m$SIT$estimate,
-    estimate_UBSF = m$UBSF$estimate,
-    estimate_EMA = m$EMA$estimate,
-    se_REML = m$REML$se,
-    se_MWM = m$MWM$se,
-    se_ARP = m$ARP$se,
-    adjustment_MWM = m$MWM$adjustment,
-    n_trimmed_SIT = m$SIT$n_trimmed,
-    bias_detected = m$UBSF$bias_detected,
-    direction_fragile = m$UBSF$direction_fragile
+    estimate_REML = as.numeric(getm("REML", "estimate")),
+    estimate_MWM = as.numeric(getm("MWM", "estimate")),
+    estimate_ARP = as.numeric(getm("ARP", "estimate")),
+    estimate_SIT = as.numeric(getm("SIT", "estimate")),
+    estimate_UBSF = as.numeric(getm("UBSF", "estimate")),
+    estimate_EMA = as.numeric(getm("EMA", "estimate")),
+    se_REML = as.numeric(getm("REML", "se")),
+    se_MWM = as.numeric(getm("MWM", "se")),
+    se_ARP = as.numeric(getm("ARP", "se")),
+    adjustment_MWM = as.numeric(getm("MWM", "adjustment")),
+    n_trimmed_SIT = as.numeric(getm("SIT", "n_trimmed")),
+    bias_detected = as.logical(getm("UBSF", "bias_detected", NA)),
+    direction_fragile = as.logical(getm("UBSF", "direction_fragile", NA))
   )
 
-  summary_data <- rbind(summary_data, row)
+  summary_data <- rbind(summary_data, row, fill = TRUE)
 }
 
 cat(sprintf("Total datasets analyzed: %d\n", nrow(summary_data)))
@@ -453,6 +500,9 @@ output_file <- file.path(output_dir, "advanced_methods_validation.csv")
 
 dir.create(dirname(output_file), showWarnings = FALSE, recursive = TRUE)
 fwrite(summary_data, output_file)
+if (nrow(failure_log) > 0) {
+  fwrite(failure_log, file.path(output_dir, "advanced_methods_validation_failures.csv"))
+}
 
 cat(sprintf("\n\nResults saved to: %s\n", output_file))
 cat(strrep("=", 70), "\n")
