@@ -6,13 +6,52 @@
 library(data.table)
 library(metafor)
 
+# Resolve repo paths robustly (works from any working directory)
+args_full <- commandArgs(trailingOnly = FALSE)
+file_arg_idx <- grep("^--file=", args_full)
+script_path <- if (length(file_arg_idx) > 0) {
+  sub("^--file=", "", args_full[file_arg_idx[1]])
+} else {
+  ""
+}
+
+cwd <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+script_dir <- if (nzchar(script_path)) {
+  normalizePath(dirname(script_path), winslash = "/", mustWork = FALSE)
+} else {
+  cwd
+}
+
+candidate_roots <- unique(c(
+  cwd,
+  normalizePath(file.path(cwd, ".."), winslash = "/", mustWork = FALSE),
+  script_dir,
+  normalizePath(file.path(script_dir, ".."), winslash = "/", mustWork = FALSE)
+))
+
+repo_root <- candidate_roots[which(vapply(
+  candidate_roots,
+  function(p) file.exists(file.path(p, "DESCRIPTION")) && dir.exists(file.path(p, "R")),
+  logical(1)
+))[1]]
+
+if (is.na(repo_root) || !nzchar(repo_root)) {
+  stop("Could not locate repo root (expected DESCRIPTION and R/).")
+}
+
+analysis_dir <- file.path(repo_root, "analysis")
+output_dir <- file.path(analysis_dir, "output")
+
 # Load advanced methods
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods.R")
+source(file.path(analysis_dir, "Advanced_Pooling_Methods.R"))
 
 # Load Pairwise70 datasets
 if (!require("Pairwise70", quietly = TRUE)) {
   # If package not installed, try loading from local
-  devtools::load_all("C:/Users/user/OneDrive - NHS/Documents/Pairwise70")
+  if (!requireNamespace("devtools", quietly = TRUE)) {
+    stop("Pairwise70 package not installed and devtools not available to load local package.")
+  }
+  devtools::load_all(repo_root)
 }
 
 ################################################################################
@@ -26,6 +65,18 @@ cat(strrep("=", 70), "\n\n")
 
 # Get list of available datasets
 data_list <- data(package = "Pairwise70")$results[, "Item"]
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) >= 1) {
+  max_datasets <- suppressWarnings(as.integer(args[1]))
+  if (!is.na(max_datasets) && max_datasets > 0 && max_datasets < length(data_list)) {
+    data_list <- data_list[seq_len(max_datasets)]
+    cat(sprintf("Limiting run to first %d datasets via CLI argument\n", max_datasets))
+  }
+}
+if (length(args) >= 2 && nzchar(args[2])) {
+  output_dir <- args[2]
+  cat(sprintf("Using custom output directory via CLI argument: %s\n", output_dir))
+}
 cat(sprintf("Found %d datasets in Pairwise70\n\n", length(data_list)))
 
 ################################################################################
@@ -33,6 +84,7 @@ cat(sprintf("Found %d datasets in Pairwise70\n\n", length(data_list)))
 ################################################################################
 
 validate_on_dataset <- function(dataset_name, verbose = FALSE) {
+  d <- NULL
 
   # Load dataset
   tryCatch({
@@ -47,15 +99,30 @@ validate_on_dataset <- function(dataset_name, verbose = FALSE) {
   # Determine outcome type and calculate effect sizes
   result <- tryCatch({
 
-    # Check for binary outcome data
-    has_binary <- all(c("Experimental.cases", "Experimental.N",
-                        "Control.cases", "Control.N") %in% names(d))
+    # Check available columns
+    has_binary_cols <- all(c("Experimental.cases", "Experimental.N",
+                             "Control.cases", "Control.N") %in% names(d))
+    has_continuous_cols <- all(c("Experimental.mean", "Experimental.SD", "Experimental.N",
+                                 "Control.mean", "Control.SD", "Control.N") %in% names(d))
 
-    # Check for continuous outcome data
-    has_continuous <- all(c("Experimental.mean", "Experimental.sd", "Experimental.N",
-                            "Control.mean", "Control.sd", "Control.N") %in% names(d))
+    # Decide branch by valid row availability, not only column presence.
+    n_valid_binary <- if (has_binary_cols) {
+      sum(complete.cases(d[, c("Experimental.cases", "Experimental.N",
+                               "Control.cases", "Control.N")]))
+    } else {
+      0L
+    }
+    n_valid_continuous <- if (has_continuous_cols) {
+      sum(complete.cases(d[, c("Experimental.mean", "Experimental.SD", "Experimental.N",
+                               "Control.mean", "Control.SD", "Control.N")]))
+    } else {
+      0L
+    }
 
-    if (has_binary) {
+    use_binary <- n_valid_binary >= 3 && n_valid_binary >= n_valid_continuous
+    use_continuous <- n_valid_continuous >= 3 && n_valid_continuous > n_valid_binary
+
+    if (use_binary) {
       # Calculate log OR
       es <- escalc(measure = "OR",
                    ai = d$Experimental.cases,
@@ -66,14 +133,14 @@ validate_on_dataset <- function(dataset_name, verbose = FALSE) {
       vi <- es$vi
       measure <- "OR"
 
-    } else if (has_continuous) {
+    } else if (use_continuous) {
       # Calculate SMD
       es <- escalc(measure = "SMD",
                    m1i = d$Experimental.mean,
-                   sd1i = d$Experimental.sd,
+                   sd1i = d$Experimental.SD,
                    n1i = d$Experimental.N,
                    m2i = d$Control.mean,
-                   sd2i = d$Control.sd,
+                   sd2i = d$Control.SD,
                    n2i = d$Control.N)
       yi <- es$yi
       vi <- es$vi
@@ -302,10 +369,10 @@ cat("\nSE ratio (method / REML):\n")
 cat(sprintf("  MWM:  %.3f\n", mean(summary_data$se_MWM / summary_data$se_REML, na.rm = TRUE)))
 cat(sprintf("  ARP:  %.3f\n", mean(summary_data$se_ARP / summary_data$se_REML, na.rm = TRUE)))
 
-cat("\nPublication bias detected (UBSF): %.1f%%\n",
-    100 * mean(summary_data$bias_detected, na.rm = TRUE))
-cat("Direction fragility detected: %.1f%%\n",
-    100 * mean(summary_data$direction_fragile, na.rm = TRUE))
+cat(sprintf("\nPublication bias detected (UBSF): %.1f%%\n",
+            100 * mean(summary_data$bias_detected, na.rm = TRUE)))
+cat(sprintf("Direction fragility detected: %.1f%%\n",
+            100 * mean(summary_data$direction_fragile, na.rm = TRUE)))
 
 cat("\nStudies trimmed by SIT:\n")
 cat(sprintf("  Mean: %.1f\n", mean(summary_data$n_trimmed_SIT, na.rm = TRUE)))
@@ -382,7 +449,7 @@ cat("   RoBMA and RVE do not consider.\n")
 # SECTION 8: SAVE RESULTS
 ################################################################################
 
-output_file <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output/advanced_methods_validation.csv"
+output_file <- file.path(output_dir, "advanced_methods_validation.csv")
 
 dir.create(dirname(output_file), showWarnings = FALSE, recursive = TRUE)
 fwrite(summary_data, output_file)

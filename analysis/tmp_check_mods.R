@@ -1,5 +1,5 @@
 library(metafor)
-files <- list.files('analysis/output/cleaned_rds', pattern='\.rds$', full.names=TRUE)
+files <- list.files('analysis/output/cleaned_rds', pattern='\\.rds$', full.names=TRUE)
 count_mod <- 0
 count_attempt <- 0
 for (f in files) {

@@ -3,6 +3,30 @@
 # Full analysis of 5,088 meta-analyses from Pairwise70 Cochrane Collection
 # ============================================================================
 
+# Resolve repo root for portable paths
+args_full <- commandArgs(trailingOnly = FALSE)
+file_arg_idx <- grep("^--file=", args_full)
+script_path <- if (length(file_arg_idx) > 0) sub("^--file=", "", args_full[file_arg_idx[1]]) else ""
+script_dir <- if (nzchar(script_path)) {
+  normalizePath(dirname(script_path), winslash = "/", mustWork = FALSE)
+} else {
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+}
+candidate_roots <- unique(c(
+  script_dir,
+  normalizePath(file.path(script_dir, ".."), winslash = "/", mustWork = FALSE),
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE),
+  normalizePath(file.path(getwd(), ".."), winslash = "/", mustWork = FALSE)
+))
+repo_root <- candidate_roots[which(vapply(
+  candidate_roots,
+  function(p) file.exists(file.path(p, "DESCRIPTION")) && dir.exists(file.path(p, "analysis")),
+  logical(1)
+))[1]]
+if (is.na(repo_root) || !nzchar(repo_root)) {
+  stop("Could not locate repo root (expected DESCRIPTION and analysis/).")
+}
+
 cat("
 ================================================================================
    MA4 v1.0.1 COMPREHENSIVE STATISTICAL MODELING
@@ -11,7 +35,7 @@ cat("
 \n")
 
 # Load results
-results <- read.csv("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_results_pairwise70.csv",
+results <- read.csv(file.path(repo_root, "analysis", "ma4_results_pairwise70.csv"),
                     stringsAsFactors = FALSE)
 
 cat("Data loaded:", nrow(results), "meta-analyses from",
@@ -554,7 +578,7 @@ cat("   - High heterogeneity (tau > 0.5) reduces stability\n")
 cat("   - logRR analyses (binary outcomes) tend to be most stable\n")
 
 # Save summary to file
-sink("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_modeling_summary.txt")
+sink(file.path(repo_root, "analysis", "ma4_modeling_summary.txt"))
 cat("MA4 v1.0.1 Modeling Summary - Pairwise70\n")
 cat("=========================================\n\n")
 cat("Total meta-analyses:", nrow(results), "\n")
