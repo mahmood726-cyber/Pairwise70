@@ -445,6 +445,8 @@ main <- function() {
   if (!is.finite(max_k) || max_k < 3) max_k <- 120L
   n_boot_swa <- if (length(args) >= 4) as.integer(args[4]) else 19L
   if (!is.finite(n_boot_swa) || n_boot_swa < 9) n_boot_swa <- 19L
+  n_rank_boot <- if (length(args) >= 5) as.integer(args[5]) else 200L
+  if (!is.finite(n_rank_boot) || n_rank_boot < 50) n_rank_boot <- 200L
 
   data_list <- data(package = "Pairwise70")$results[, "Item"]
   if (max_datasets < length(data_list)) data_list <- data_list[seq_len(max_datasets)]
@@ -563,6 +565,65 @@ main <- function() {
     sign_flip_rate_vs_reml = mean(sign(estimate) != sign(reml_est), na.rm = TRUE)
   ), by = method]
 
+  # Rank uncertainty via bootstrap over datasets.
+  base_metrics <- out_eval[is.finite(estimate), .(
+    mean_abs_shift_vs_reml = mean(abs_shift_vs_reml, na.rm = TRUE),
+    mean_abs_shift_vs_consensus = mean(abs_shift_vs_consensus, na.rm = TRUE),
+    median_se = median(se[is.finite(se)], na.rm = TRUE),
+    sign_flip_rate_vs_reml = mean(sign(estimate) != sign(reml_est), na.rm = TRUE),
+    convergence = mean(is.finite(estimate))
+  ), by = .(dataset, method)]
+  all_methods <- unique(summary_dt$method)
+  all_datasets <- unique(base_metrics$dataset)
+  rank_boot <- data.table()
+  set.seed(20260217)
+  for (b in seq_len(n_rank_boot)) {
+    ds <- sample(all_datasets, size = length(all_datasets), replace = TRUE)
+    boot <- base_metrics[dataset %in% ds]
+    boot_s <- boot[, .(
+      mean_abs_shift_vs_reml = mean(mean_abs_shift_vs_reml, na.rm = TRUE),
+      mean_abs_shift_vs_consensus = mean(mean_abs_shift_vs_consensus, na.rm = TRUE),
+      median_se = median(median_se, na.rm = TRUE),
+      sign_flip_rate_vs_reml = mean(sign_flip_rate_vs_reml, na.rm = TRUE),
+      convergence = mean(convergence, na.rm = TRUE)
+    ), by = method]
+    # Ensure method completeness in bootstrap sample.
+    boot_s <- merge(data.table(method = all_methods), boot_s, by = "method", all.x = TRUE, sort = FALSE)
+    fill_col <- function(x, default) {
+      if (!any(is.finite(x))) return(rep(default, length(x)))
+      worst <- max(x[is.finite(x)], na.rm = TRUE)
+      x[!is.finite(x)] <- worst
+      x[is.na(x)] <- worst
+      x
+    }
+    boot_s[, mean_abs_shift_vs_reml := fill_col(mean_abs_shift_vs_reml, 1e3)]
+    boot_s[, mean_abs_shift_vs_consensus := fill_col(mean_abs_shift_vs_consensus, 1e3)]
+    boot_s[, median_se := fill_col(median_se, 1e3)]
+    boot_s[, sign_flip_rate_vs_reml := fill_col(sign_flip_rate_vs_reml, 1.0)]
+    boot_s[, convergence := fill_col(convergence, 0.0)]
+    scale01b <- function(x) {
+      rx <- range(x, na.rm = TRUE)
+      if (!is.finite(rx[1]) || !is.finite(rx[2]) || rx[1] == rx[2]) return(rep(0, length(x)))
+      (x - rx[1]) / (rx[2] - rx[1])
+    }
+    boot_s[, score_shift := scale01b(mean_abs_shift_vs_reml)]
+    boot_s[, score_consensus := scale01b(mean_abs_shift_vs_consensus)]
+    boot_s[, score_se := scale01b(median_se)]
+    boot_s[, score_flip := scale01b(sign_flip_rate_vs_reml)]
+    boot_s[, score_convergence := scale01b(1 - convergence)]
+    boot_s[, world_score := 0.25 * score_shift + 0.25 * score_consensus + 0.20 * score_se + 0.15 * score_flip + 0.15 * score_convergence]
+    setorder(boot_s, world_score)
+    boot_s[, rank := seq_len(.N)]
+    rank_boot <- rbind(rank_boot, boot_s[, .(method, b, rank)], fill = TRUE)
+  }
+  rank_unc <- rank_boot[, .(
+    rank_mean = mean(rank, na.rm = TRUE),
+    rank_sd = sd(rank, na.rm = TRUE),
+    rank_p10 = as.numeric(stats::quantile(rank, 0.10, na.rm = TRUE)),
+    rank_p90 = as.numeric(stats::quantile(rank, 0.90, na.rm = TRUE))
+  ), by = method]
+  summary_dt <- merge(summary_dt, rank_unc, by = "method", all.x = TRUE, sort = FALSE)
+
   # Composite score: lower is better
   scale01 <- function(x) {
     rx <- range(x, na.rm = TRUE)
@@ -574,7 +635,8 @@ main <- function() {
   summary_dt[, score_se := scale01(median_se)]
   summary_dt[, score_flip := scale01(sign_flip_rate_vs_reml)]
   summary_dt[, score_convergence := scale01(1 - convergence)]
-  summary_dt[, world_score := 0.25 * score_shift + 0.25 * score_consensus + 0.20 * score_se + 0.15 * score_flip + 0.15 * score_convergence]
+  summary_dt[, score_rank_uncertainty := scale01(rank_sd)]
+  summary_dt[, world_score := 0.22 * score_shift + 0.22 * score_consensus + 0.18 * score_se + 0.13 * score_flip + 0.13 * score_convergence + 0.12 * score_rank_uncertainty]
   setorder(summary_dt, world_score)
   summary_dt[, rank := seq_len(.N)]
 
@@ -588,11 +650,11 @@ main <- function() {
   if (nrow(method_fail) > 0) fwrite(method_fail, file.path(out_dir, paste0("nextgen12_realdata_method_failures_", stamp, ".csv")))
 
   cat("NextGen12 real-data benchmark complete\n")
-  print(summary_dt[, .(rank, method, n_datasets, convergence, mean_abs_shift_vs_reml, mean_abs_shift_vs_consensus, median_se, sign_flip_rate_vs_reml, world_score)])
+  print(summary_dt[, .(rank, method, n_datasets, convergence, mean_abs_shift_vs_reml, mean_abs_shift_vs_consensus, median_se, sign_flip_rate_vs_reml, rank_sd, rank_p10, rank_p90, world_score)])
   cat(sprintf("Datasets attempted: %d\n", length(data_list)))
   cat(sprintf("Datasets evaluated: %d\n", uniqueN(out$dataset)))
   cat(sprintf("Datasets in result matrix: %d\n", n_total))
-  cat(sprintf("Runtime controls: timeout=%ds, max_k=%d, n_boot_swa=%d\n", timeout_sec, max_k, n_boot_swa))
+  cat(sprintf("Runtime controls: timeout=%ds, max_k=%d, n_boot_swa=%d, n_rank_boot=%d\n", timeout_sec, max_k, n_boot_swa, n_rank_boot))
 }
 
 main()
