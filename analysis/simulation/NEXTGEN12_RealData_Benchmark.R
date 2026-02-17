@@ -640,23 +640,17 @@ main <- function() {
     ), by = method]
     # Ensure method completeness in bootstrap sample.
     boot_s <- merge(data.table(method = all_methods), boot_s, by = "method", all.x = TRUE, sort = FALSE)
-    fill_col <- function(x, default, worst = c("high", "low")) {
-      worst <- match.arg(worst)
+    fill_col <- function(x, default) {
       if (!any(is.finite(x))) return(rep(default, length(x)))
-      worst_val <- if (worst == "high") {
-        max(x[is.finite(x)], na.rm = TRUE)
-      } else {
-        min(x[is.finite(x)], na.rm = TRUE)
-      }
-      x[!is.finite(x)] <- worst_val
-      x[is.na(x)] <- worst_val
+      x[!is.finite(x)] <- default
+      x[is.na(x)] <- default
       x
     }
-    boot_s[, mean_abs_shift_vs_reml := fill_col(mean_abs_shift_vs_reml, 1e3, worst = "high")]
-    boot_s[, mean_abs_shift_vs_consensus := fill_col(mean_abs_shift_vs_consensus, 1e3, worst = "high")]
-    boot_s[, median_se := fill_col(median_se, 1e3, worst = "high")]
-    boot_s[, sign_flip_rate_vs_reml := fill_col(sign_flip_rate_vs_reml, 1.0, worst = "high")]
-    boot_s[, convergence := fill_col(convergence, 0.0, worst = "low")]
+    boot_s[, mean_abs_shift_vs_reml := fill_col(mean_abs_shift_vs_reml, 1e3)]
+    boot_s[, mean_abs_shift_vs_consensus := fill_col(mean_abs_shift_vs_consensus, 1e3)]
+    boot_s[, median_se := fill_col(median_se, 1e3)]
+    boot_s[, sign_flip_rate_vs_reml := fill_col(sign_flip_rate_vs_reml, 1.0)]
+    boot_s[, convergence := fill_col(convergence, 0.0)]
     scale01b <- function(x) {
       rx <- range(x, na.rm = TRUE)
       if (!is.finite(rx[1]) || !is.finite(rx[2]) || rx[1] == rx[2]) return(rep(0, length(x)))
