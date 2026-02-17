@@ -566,11 +566,26 @@ main <- function() {
   ), by = method]
 
   # Rank uncertainty via bootstrap over datasets.
-  base_metrics <- out_eval[is.finite(estimate), .(
-    mean_abs_shift_vs_reml = mean(abs_shift_vs_reml, na.rm = TRUE),
-    mean_abs_shift_vs_consensus = mean(abs_shift_vs_consensus, na.rm = TRUE),
-    median_se = median(se[is.finite(se)], na.rm = TRUE),
-    sign_flip_rate_vs_reml = mean(sign(estimate) != sign(reml_est), na.rm = TRUE),
+  base_metrics <- out_eval[, .(
+    mean_abs_shift_vs_reml = if (any(is.finite(abs_shift_vs_reml))) {
+      mean(abs_shift_vs_reml[is.finite(abs_shift_vs_reml)], na.rm = TRUE)
+    } else {
+      NA_real_
+    },
+    mean_abs_shift_vs_consensus = if (any(is.finite(abs_shift_vs_consensus))) {
+      mean(abs_shift_vs_consensus[is.finite(abs_shift_vs_consensus)], na.rm = TRUE)
+    } else {
+      NA_real_
+    },
+    median_se = if (any(is.finite(se))) {
+      median(se[is.finite(se)], na.rm = TRUE)
+    } else {
+      NA_real_
+    },
+    sign_flip_rate_vs_reml = {
+      flip_mask <- is.finite(estimate) & is.finite(reml_est)
+      if (any(flip_mask)) mean(sign(estimate[flip_mask]) != sign(reml_est[flip_mask]), na.rm = TRUE) else NA_real_
+    },
     convergence = mean(is.finite(estimate))
   ), by = .(dataset, method)]
   all_methods <- unique(summary_dt$method)
