@@ -524,11 +524,20 @@ main <- function() {
     )
     for (mname in names(method_objects)) {
       obj <- method_objects[[mname]]
-      if (!is.finite(safe_num(obj$estimate))) {
+      bad_est <- !is.finite(safe_num(obj$estimate))
+      bad_se <- !is.finite(safe_num(obj$se)) || safe_num(obj$se) <= 0
+      if (bad_est || bad_se) {
+        reason <- if (bad_est && bad_se) {
+          "invalid_estimate_and_se"
+        } else if (bad_est) {
+          "invalid_estimate"
+        } else {
+          "invalid_se"
+        }
         method_fail <- rbind(method_fail, data.table(
           dataset = nm,
           method = mname,
-          reason = if ("error" %in% names(obj) && nzchar(obj$error)) obj$error else "non_finite_estimate"
+          reason = if ("error" %in% names(obj) && nzchar(obj$error)) obj$error else reason
         ))
       }
     }
@@ -564,7 +573,7 @@ main <- function() {
 
   summary_dt <- out_eval[, .(
     n_datasets = uniqueN(dataset[is.finite(estimate)]),
-    convergence = mean(is.finite(estimate)),
+    convergence = mean(is.finite(estimate) & is.finite(se) & se > 0),
     median_k = median(k, na.rm = TRUE),
     mean_abs_shift_vs_reml = mean(abs_shift_vs_reml, na.rm = TRUE),
     mean_abs_shift_vs_consensus = mean(abs_shift_vs_consensus, na.rm = TRUE),
@@ -593,7 +602,7 @@ main <- function() {
       flip_mask <- is.finite(estimate) & is.finite(reml_est)
       if (any(flip_mask)) mean(stable_sign(estimate[flip_mask]) != stable_sign(reml_est[flip_mask]), na.rm = TRUE) else NA_real_
     },
-    convergence = mean(is.finite(estimate))
+    convergence = mean(is.finite(estimate) & is.finite(se) & se > 0)
   ), by = .(dataset, method)]
   all_methods <- unique(summary_dt$method)
   all_datasets <- unique(base_metrics$dataset)
