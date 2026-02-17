@@ -662,7 +662,7 @@ main <- function() {
     boot_s[, score_flip := scale01b(sign_flip_rate_vs_reml)]
     boot_s[, score_convergence := scale01b(1 - convergence)]
     boot_s[, world_score := 0.25 * score_shift + 0.25 * score_consensus + 0.20 * score_se + 0.15 * score_flip + 0.15 * score_convergence]
-    setorder(boot_s, world_score)
+    setorder(boot_s, world_score, method)
     boot_s[, rank := seq_len(.N)]
     rank_boot <- rbind(rank_boot, boot_s[, .(method, b, rank)], fill = TRUE)
   }
@@ -705,7 +705,7 @@ main <- function() {
   summary_dt[, score_convergence := scale01(1 - convergence)]
   summary_dt[, score_rank_uncertainty := scale01(rank_sd)]
   summary_dt[, world_score := 0.22 * score_shift + 0.22 * score_consensus + 0.18 * score_se + 0.13 * score_flip + 0.13 * score_convergence + 0.12 * score_rank_uncertainty]
-  setorder(summary_dt, world_score)
+  setorder(summary_dt, world_score, method)
   summary_dt[, rank := seq_len(.N)]
 
   stamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
