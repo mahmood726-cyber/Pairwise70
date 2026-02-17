@@ -579,7 +579,9 @@ main <- function() {
   set.seed(20260217)
   for (b in seq_len(n_rank_boot)) {
     ds <- sample(all_datasets, size = length(all_datasets), replace = TRUE)
-    boot <- base_metrics[dataset %in% ds]
+    # Preserve multiplicity in bootstrap resampling (set-membership would understate uncertainty).
+    sampled_dt <- data.table(dataset = ds, boot_rep = seq_along(ds))
+    boot <- merge(sampled_dt, base_metrics, by = "dataset", all.x = TRUE, allow.cartesian = TRUE, sort = FALSE)
     boot_s <- boot[, .(
       mean_abs_shift_vs_reml = mean(mean_abs_shift_vs_reml, na.rm = TRUE),
       mean_abs_shift_vs_consensus = mean(mean_abs_shift_vs_consensus, na.rm = TRUE),
