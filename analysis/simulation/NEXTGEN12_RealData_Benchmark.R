@@ -29,6 +29,13 @@ safe_num <- function(x) {
   as.numeric(x[1])
 }
 
+stable_sign <- function(x, eps = 1e-8) {
+  s <- sign(x)
+  s[!is.finite(x)] <- NA_real_
+  s[abs(x) <= eps] <- 0
+  s
+}
+
 safe_ci <- function(est, se, k) {
   if (!is.finite(est) || !is.finite(se) || se <= 0) return(list(lb = NA_real_, ub = NA_real_))
   df <- max(1, k - 2)
@@ -562,7 +569,7 @@ main <- function() {
     mean_abs_shift_vs_reml = mean(abs_shift_vs_reml, na.rm = TRUE),
     mean_abs_shift_vs_consensus = mean(abs_shift_vs_consensus, na.rm = TRUE),
     median_se = median(se[is.finite(se)], na.rm = TRUE),
-    sign_flip_rate_vs_reml = mean(sign(estimate) != sign(reml_est), na.rm = TRUE)
+    sign_flip_rate_vs_reml = mean(stable_sign(estimate) != stable_sign(reml_est), na.rm = TRUE)
   ), by = method]
 
   # Rank uncertainty via bootstrap over datasets.
@@ -584,7 +591,7 @@ main <- function() {
     },
     sign_flip_rate_vs_reml = {
       flip_mask <- is.finite(estimate) & is.finite(reml_est)
-      if (any(flip_mask)) mean(sign(estimate[flip_mask]) != sign(reml_est[flip_mask]), na.rm = TRUE) else NA_real_
+      if (any(flip_mask)) mean(stable_sign(estimate[flip_mask]) != stable_sign(reml_est[flip_mask]), na.rm = TRUE) else NA_real_
     },
     convergence = mean(is.finite(estimate))
   ), by = .(dataset, method)]
