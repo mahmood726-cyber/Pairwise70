@@ -572,34 +572,49 @@ main <- function() {
   out_eval[, abs_shift_vs_consensus := abs(estimate - consensus_est)]
 
   summary_dt <- out_eval[, .(
-    n_datasets = uniqueN(dataset[is.finite(estimate)]),
+    n_datasets = uniqueN(dataset[is.finite(estimate) & is.finite(se) & se > 0]),
     convergence = mean(is.finite(estimate) & is.finite(se) & se > 0),
     median_k = median(k, na.rm = TRUE),
-    mean_abs_shift_vs_reml = mean(abs_shift_vs_reml, na.rm = TRUE),
-    mean_abs_shift_vs_consensus = mean(abs_shift_vs_consensus, na.rm = TRUE),
-    median_se = median(se[is.finite(se)], na.rm = TRUE),
-    sign_flip_rate_vs_reml = mean(stable_sign(estimate) != stable_sign(reml_est), na.rm = TRUE)
+    mean_abs_shift_vs_reml = {
+      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(abs_shift_vs_reml)
+      if (any(valid_mask)) mean(abs_shift_vs_reml[valid_mask], na.rm = TRUE) else NA_real_
+    },
+    mean_abs_shift_vs_consensus = {
+      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(abs_shift_vs_consensus)
+      if (any(valid_mask)) mean(abs_shift_vs_consensus[valid_mask], na.rm = TRUE) else NA_real_
+    },
+    median_se = {
+      valid_se <- se[is.finite(estimate) & is.finite(se) & se > 0]
+      if (length(valid_se) > 0) median(valid_se, na.rm = TRUE) else NA_real_
+    },
+    sign_flip_rate_vs_reml = {
+      flip_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(reml_est)
+      if (any(flip_mask)) mean(stable_sign(estimate[flip_mask]) != stable_sign(reml_est[flip_mask]), na.rm = TRUE) else NA_real_
+    }
   ), by = method]
 
   # Rank uncertainty via bootstrap over datasets.
   base_metrics <- out_eval[, .(
     mean_abs_shift_vs_reml = if (any(is.finite(abs_shift_vs_reml))) {
-      mean(abs_shift_vs_reml[is.finite(abs_shift_vs_reml)], na.rm = TRUE)
+      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(abs_shift_vs_reml)
+      if (any(valid_mask)) mean(abs_shift_vs_reml[valid_mask], na.rm = TRUE) else NA_real_
     } else {
       NA_real_
     },
     mean_abs_shift_vs_consensus = if (any(is.finite(abs_shift_vs_consensus))) {
-      mean(abs_shift_vs_consensus[is.finite(abs_shift_vs_consensus)], na.rm = TRUE)
+      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(abs_shift_vs_consensus)
+      if (any(valid_mask)) mean(abs_shift_vs_consensus[valid_mask], na.rm = TRUE) else NA_real_
     } else {
       NA_real_
     },
     median_se = if (any(is.finite(se))) {
-      median(se[is.finite(se)], na.rm = TRUE)
+      valid_se <- se[is.finite(estimate) & is.finite(se) & se > 0]
+      if (length(valid_se) > 0) median(valid_se, na.rm = TRUE) else NA_real_
     } else {
       NA_real_
     },
     sign_flip_rate_vs_reml = {
-      flip_mask <- is.finite(estimate) & is.finite(reml_est)
+      flip_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(reml_est)
       if (any(flip_mask)) mean(stable_sign(estimate[flip_mask]) != stable_sign(reml_est[flip_mask]), na.rm = TRUE) else NA_real_
     },
     convergence = mean(is.finite(estimate) & is.finite(se) & se > 0)

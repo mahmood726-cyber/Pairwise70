@@ -1,0 +1,4 @@
+dataset,method,reason
+CD001072_pub2_data,CPC,invalid_estimate_and_se
+CD001072_pub2_data,HGAM,invalid_estimate_and_se
+CD001072_pub2_data,MTLE,invalid_estimate_and_se
