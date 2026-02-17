@@ -39,15 +39,16 @@ No single method is expected to win every scenario. Success criterion is dominan
 
 ## Development Phases
 
-### Phase 1 (now)
+### Phase 1 (completed)
 - Build executable scaffold and method registry.
 - Implement first 3 prototypes: `QSE`, `LTH`, `RMR`.
 - Add smoke benchmark over synthetic scenarios.
 
-### Phase 2
-- Implement remaining 9 methods.
-- Add ablation tests per method component.
-- Add calibration diagnostics for type-I error and coverage.
+### Phase 2 (completed)
+- Implement remaining 9 methods:
+  `CRT`, `SAFE`, `CPC`, `DTM`, `AWH`, `BSC`, `MRSTACK`, `HGAM`, `MTLE`.
+- Add real-data benchmark harness on Pairwise70 datasets.
+- Add composite ranking score (`world_score`) with convergence and sign-stability penalties.
 
 ### Phase 3
 - Full world benchmark (`n_sim >= 500`) with ranking sensitivity.
@@ -62,6 +63,6 @@ No single method is expected to win every scenario. Success criterion is dominan
   - applicability < 0.70 without strong compensating gains.
 
 ## Immediate Next Iteration
-1. Run `analysis/simulation/NEXTGEN12_Framework.R` smoke benchmark.
-2. Review method diagnostics for `QSE`, `LTH`, `RMR`.
-3. Tune hyperparameters and expand to `CRT`, `AWH`, `MRSTACK`.
+1. Add simulation calibration for type-I error / coverage / power for all 12 methods.
+2. Run ablations of `FATIHA` component weights and trimming thresholds.
+3. Promote top-performing methods into package exports (`R/advanced_pooling_v4.R`) after calibration pass.

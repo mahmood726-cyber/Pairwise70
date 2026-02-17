@@ -169,6 +169,137 @@ mrstack_meta <- function(yi, vi) {
   list(method = "MRSTACK", estimate = est, se = se, ci_lb = ci$lb, ci_ub = ci$ub)
 }
 
+# SAFE: Selective Adaptive Fusion Estimator
+safe_meta <- function(yi, vi) {
+  k <- length(yi)
+  reml <- tryCatch(metafor::rma(yi, vi, method = "REML"), error = function(e) NULL)
+  hksj <- tryCatch(metafor::rma(yi, vi, method = "REML", test = "knha"), error = function(e) NULL)
+  lth <- lth_meta(yi, vi)
+  rmr <- rmr_meta(yi, vi)
+  if (is.null(reml) || is.null(hksj)) return(list(method = "SAFE", estimate = NA_real_, se = NA_real_))
+
+  tbl <- data.table(
+    method = c("REML", "HKSJ", "LTH", "RMR"),
+    estimate = c(safe_num(coef(reml)), safe_num(coef(hksj)), lth$estimate, rmr$estimate),
+    se = c(safe_num(reml$se), safe_num(hksj$se), lth$se, rmr$se)
+  )
+  tbl <- tbl[is.finite(estimate) & is.finite(se) & se > 0]
+  if (nrow(tbl) < 2) return(list(method = "SAFE", estimate = NA_real_, se = NA_real_))
+
+  center <- stats::median(tbl$estimate)
+  disp <- abs(tbl$estimate - center)
+  w <- (1 / tbl$se^2) * exp(-disp / (stats::mad(tbl$estimate, constant = 1) + 1e-6))
+  w <- pmax(w, 1e-8)
+  w <- w / sum(w)
+
+  est <- sum(w * tbl$estimate)
+  se <- sqrt(sum(w * tbl$se^2) + sum(w * (tbl$estimate - est)^2))
+  ci <- safe_ci(est, se, k)
+  list(method = "SAFE", estimate = est, se = se, ci_lb = ci$lb, ci_ub = ci$ub)
+}
+
+# CPC: Cross-Phenotype Consensus Pooling
+cpc_meta <- function(yi, vi) {
+  k <- length(yi)
+  ord <- order(yi)
+  g <- 3L
+  groups <- split(ord, cut(seq_along(ord), breaks = g, labels = FALSE))
+  ests <- numeric()
+  ses <- numeric()
+  for (idx in groups) {
+    if (length(idx) < 3) next
+    fit <- tryCatch(metafor::rma(yi[idx], vi[idx], method = "REML"), error = function(e) NULL)
+    if (is.null(fit)) next
+    ests <- c(ests, safe_num(coef(fit)))
+    ses <- c(ses, safe_num(fit$se))
+  }
+  if (length(ests) < 2) return(list(method = "CPC", estimate = NA_real_, se = NA_real_))
+  w <- 1 / pmax(ses, 1e-6)^2
+  w <- w / sum(w)
+  est <- sum(w * ests)
+  se <- sqrt(sum(w * ses^2) + sum(w * (ests - est)^2))
+  ci <- safe_ci(est, se, k)
+  list(method = "CPC", estimate = est, se = se, ci_lb = ci$lb, ci_ub = ci$ub)
+}
+
+# DTM: Distributional Tau Mixture
+dtm_meta <- function(yi, vi) {
+  k <- length(yi)
+  fit <- tryCatch(metafor::rma(yi, vi, method = "REML"), error = function(e) NULL)
+  if (is.null(fit)) return(list(method = "DTM", estimate = NA_real_, se = NA_real_))
+  tau_base <- pmax(0, safe_num(fit$tau2))
+  tau_grid <- c(0.5, 1.0, 1.5) * sqrt(tau_base + 1e-8)
+  tau2_grid <- tau_grid^2
+
+  ests <- numeric()
+  ses <- numeric()
+  for (t2 in tau2_grid) {
+    w <- 1 / (vi + t2 + 1e-8)
+    ests <- c(ests, sum(w * yi) / sum(w))
+    ses <- c(ses, sqrt(1 / sum(w)))
+  }
+  mix_w <- c(0.25, 0.5, 0.25)
+  est <- sum(mix_w * ests)
+  se <- sqrt(sum(mix_w * ses^2) + sum(mix_w * (ests - est)^2))
+  ci <- safe_ci(est, se, k)
+  list(method = "DTM", estimate = est, se = se, ci_lb = ci$lb, ci_ub = ci$ub)
+}
+
+# BSC: Bayesian Stability Calibration (empirical-Bayes style shrinkage)
+bsc_meta <- function(yi, vi) {
+  k <- length(yi)
+  fit <- tryCatch(metafor::rma(yi, vi, method = "REML"), error = function(e) NULL)
+  if (is.null(fit)) return(list(method = "BSC", estimate = NA_real_, se = NA_real_))
+  mu <- safe_num(coef(fit))
+  tau2 <- pmax(0, safe_num(fit$tau2))
+  shrink <- tau2 / (tau2 + stats::median(vi) + 1e-8)
+  adj_yi <- shrink * yi + (1 - shrink) * mu
+  w <- 1 / (vi + tau2 + 1e-8)
+  est <- sum(w * adj_yi) / sum(w)
+  se <- sqrt(1 / sum(w))
+  ci <- safe_ci(est, se, k)
+  list(method = "BSC", estimate = est, se = se, ci_lb = ci$lb, ci_ub = ci$ub, shrink = shrink)
+}
+
+# HGAM: Heterogeneity GAM-style meta-regression (spline proxy)
+hgam_meta <- function(yi, vi) {
+  k <- length(yi)
+  if (k < 6) return(list(method = "HGAM", estimate = NA_real_, se = NA_real_))
+  q <- rank(vi) / (k + 1)
+  fit <- tryCatch(
+    metafor::rma(yi, vi, mods = ~ splines::bs(q, df = min(4, max(2, floor(k / 8)))), method = "REML", test = "knha"),
+    error = function(e) NULL
+  )
+  if (is.null(fit)) return(list(method = "HGAM", estimate = NA_real_, se = NA_real_))
+  est <- safe_num(coef(fit)[1])
+  se <- safe_num(fit$se[1])
+  ci <- safe_ci(est, se, k)
+  list(method = "HGAM", estimate = est, se = se, ci_lb = ci$lb, ci_ub = ci$ub)
+}
+
+# MTLE: Multi-Task Learning Effects (two-task stack over precision strata)
+mtle_meta <- function(yi, vi) {
+  k <- length(yi)
+  ord <- order(vi)
+  cut_idx <- floor(k / 2)
+  idx_hi <- ord[seq_len(max(1, cut_idx))]
+  idx_lo <- ord[seq(max(1, cut_idx + 1), k)]
+  if (length(idx_hi) < 3 || length(idx_lo) < 3) return(list(method = "MTLE", estimate = NA_real_, se = NA_real_))
+
+  fit_hi <- tryCatch(metafor::rma(yi[idx_hi], vi[idx_hi], method = "REML"), error = function(e) NULL)
+  fit_lo <- tryCatch(metafor::rma(yi[idx_lo], vi[idx_lo], method = "REML"), error = function(e) NULL)
+  if (is.null(fit_hi) || is.null(fit_lo)) return(list(method = "MTLE", estimate = NA_real_, se = NA_real_))
+
+  ests <- c(safe_num(coef(fit_hi)), safe_num(coef(fit_lo)))
+  ses <- c(safe_num(fit_hi$se), safe_num(fit_lo$se))
+  w <- 1 / pmax(ses, 1e-6)^2
+  w <- w / sum(w)
+  est <- sum(w * ests)
+  se <- sqrt(sum(w * ses^2) + sum(w * (ests - est)^2))
+  ci <- safe_ci(est, se, k)
+  list(method = "MTLE", estimate = est, se = se, ci_lb = ci$lb, ci_ub = ci$ub)
+}
+
 # FATIHA: Faithful Adaptive Trimmed Influence Harmonized Aggregation
 fatiha_meta <- function(yi, vi, n_boot_swa = 19) {
   k <- length(yi)
@@ -189,19 +320,27 @@ fatiha_meta <- function(yi, vi, n_boot_swa = 19) {
   crt <- crt_meta(yi, vi)
   awh <- awh_meta(yi, vi)
   mrstack <- mrstack_meta(yi, vi)
+  safe_res <- safe_meta(yi, vi)
+  cpc <- cpc_meta(yi, vi)
+  dtm <- dtm_meta(yi, vi)
+  bsc <- bsc_meta(yi, vi)
+  hgam <- hgam_meta(yi, vi)
+  mtle <- mtle_meta(yi, vi)
   pbm <- tryCatch(pbm_meta(yi, vi, n_boot_swa = n_boot_swa), error = function(e) list(estimate = NA_real_, se = NA_real_))
 
   tbl <- data.table(
-    method = c("REML", "HKSJ", "QSE", "LTH", "RMR", "CRT", "AWH", "MRSTACK", "PBM"),
+    method = c("REML", "HKSJ", "QSE", "LTH", "RMR", "CRT", "AWH", "MRSTACK", "SAFE", "CPC", "DTM", "BSC", "HGAM", "MTLE", "PBM"),
     estimate = c(
       reml$estimate, hksj$estimate, qse$estimate, lth$estimate, rmr$estimate,
-      crt$estimate, awh$estimate, mrstack$estimate, safe_num(pbm$estimate)
+      crt$estimate, awh$estimate, mrstack$estimate, safe_res$estimate, cpc$estimate,
+      dtm$estimate, bsc$estimate, hgam$estimate, mtle$estimate, safe_num(pbm$estimate)
     ),
     se = c(
       reml$se, hksj$se, qse$se, lth$se, rmr$se,
-      crt$se, awh$se, mrstack$se, safe_num(pbm$se)
+      crt$se, awh$se, mrstack$se, safe_res$se, cpc$se,
+      dtm$se, bsc$se, hgam$se, mtle$se, safe_num(pbm$se)
     ),
-    robust = c(0.2, 0.3, 0.6, 0.7, 0.8, 0.85, 0.75, 0.65, 0.9)
+    robust = c(0.2, 0.3, 0.6, 0.7, 0.8, 0.85, 0.75, 0.65, 0.72, 0.70, 0.74, 0.78, 0.68, 0.69, 0.9)
   )
   tbl <- tbl[is.finite(estimate) & is.finite(se) & se > 0]
   if (nrow(tbl) < 2) return(list(method = "FATIHA", estimate = NA_real_, se = NA_real_))
@@ -344,6 +483,12 @@ main <- function() {
     crt <- tryCatch(crt_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
     awh <- tryCatch(awh_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
     mrstack <- tryCatch(mrstack_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
+    safe_res <- tryCatch(safe_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
+    cpc <- tryCatch(cpc_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
+    dtm <- tryCatch(dtm_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
+    bsc <- tryCatch(bsc_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
+    hgam <- tryCatch(hgam_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
+    mtle <- tryCatch(mtle_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
     pbm <- tryCatch({
       setTimeLimit(elapsed = timeout_sec, transient = TRUE)
       on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE), add = TRUE)
@@ -364,6 +509,12 @@ main <- function() {
       eval_row(nm, es$measure, k, "CRT", crt$estimate, crt$se, reml$estimate),
       eval_row(nm, es$measure, k, "AWH", awh$estimate, awh$se, reml$estimate),
       eval_row(nm, es$measure, k, "MRSTACK", mrstack$estimate, mrstack$se, reml$estimate),
+      eval_row(nm, es$measure, k, "SAFE", safe_res$estimate, safe_res$se, reml$estimate),
+      eval_row(nm, es$measure, k, "CPC", cpc$estimate, cpc$se, reml$estimate),
+      eval_row(nm, es$measure, k, "DTM", dtm$estimate, dtm$se, reml$estimate),
+      eval_row(nm, es$measure, k, "BSC", bsc$estimate, bsc$se, reml$estimate),
+      eval_row(nm, es$measure, k, "HGAM", hgam$estimate, hgam$se, reml$estimate),
+      eval_row(nm, es$measure, k, "MTLE", mtle$estimate, mtle$se, reml$estimate),
       eval_row(nm, es$measure, k, "PBM", safe_num(pbm$estimate), safe_num(pbm$se), reml$estimate),
       eval_row(nm, es$measure, k, "FATIHA", fatiha$estimate, fatiha$se, reml$estimate)
     ), fill = TRUE)
@@ -371,12 +522,32 @@ main <- function() {
     out <- rbind(out, rows, fill = TRUE)
   }
 
-  summary_dt <- out[is.finite(estimate), .(
-    n_datasets = uniqueN(dataset),
+  n_total <- uniqueN(out$dataset)
+  reml_baseline <- out[method == "REML", .(dataset, reml_est = estimate)]
+  out_eval <- merge(out, reml_baseline, by = "dataset", all.x = TRUE, sort = FALSE)
+
+  summary_dt <- out_eval[, .(
+    n_datasets = uniqueN(dataset[is.finite(estimate)]),
+    convergence = mean(is.finite(estimate)),
     median_k = median(k, na.rm = TRUE),
     mean_abs_shift_vs_reml = mean(abs_shift_vs_reml, na.rm = TRUE),
-    median_se = median(se, na.rm = TRUE)
-  ), by = method][order(mean_abs_shift_vs_reml)]
+    median_se = median(se[is.finite(se)], na.rm = TRUE),
+    sign_flip_rate_vs_reml = mean(sign(estimate) != sign(reml_est), na.rm = TRUE)
+  ), by = method]
+
+  # Composite score: lower is better
+  scale01 <- function(x) {
+    rx <- range(x, na.rm = TRUE)
+    if (!is.finite(rx[1]) || !is.finite(rx[2]) || rx[1] == rx[2]) return(rep(0, length(x)))
+    (x - rx[1]) / (rx[2] - rx[1])
+  }
+  summary_dt[, score_shift := scale01(mean_abs_shift_vs_reml)]
+  summary_dt[, score_se := scale01(median_se)]
+  summary_dt[, score_flip := scale01(sign_flip_rate_vs_reml)]
+  summary_dt[, score_convergence := scale01(1 - convergence)]
+  summary_dt[, world_score := 0.40 * score_shift + 0.25 * score_se + 0.20 * score_flip + 0.15 * score_convergence]
+  setorder(summary_dt, world_score)
+  summary_dt[, rank := seq_len(.N)]
 
   stamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
   out_dir <- file.path(repo_root, "analysis", "results")
@@ -387,9 +558,10 @@ main <- function() {
   if (nrow(fail) > 0) fwrite(fail, file.path(out_dir, paste0("nextgen12_realdata_failures_", stamp, ".csv")))
 
   cat("NextGen12 real-data benchmark complete\n")
-  print(summary_dt)
+  print(summary_dt[, .(rank, method, n_datasets, convergence, mean_abs_shift_vs_reml, median_se, sign_flip_rate_vs_reml, world_score)])
   cat(sprintf("Datasets attempted: %d\n", length(data_list)))
   cat(sprintf("Datasets evaluated: %d\n", uniqueN(out$dataset)))
+  cat(sprintf("Datasets in result matrix: %d\n", n_total))
   cat(sprintf("Runtime controls: timeout=%ds, max_k=%d, n_boot_swa=%d\n", timeout_sec, max_k, n_boot_swa))
 }
 
