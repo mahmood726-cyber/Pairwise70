@@ -565,8 +565,11 @@ main <- function() {
   }
 
   n_total <- uniqueN(out$dataset)
-  reml_baseline <- out[method == "REML", .(dataset, reml_est = estimate)]
-  consensus_dt <- out[is.finite(estimate), .(consensus_est = median(estimate, na.rm = TRUE)), by = dataset]
+  valid_metric_mask <- is.finite(out$estimate) & is.finite(out$se) & out$se > 0
+  reml_baseline <- out[method == "REML", .(
+    reml_est = if (is.finite(estimate[1]) && is.finite(se[1]) && se[1] > 0) estimate[1] else NA_real_
+  ), by = dataset]
+  consensus_dt <- out[valid_metric_mask, .(consensus_est = median(estimate, na.rm = TRUE)), by = dataset]
   out_eval <- merge(out, reml_baseline, by = "dataset", all.x = TRUE, sort = FALSE)
   out_eval <- merge(out_eval, consensus_dt, by = "dataset", all.x = TRUE, sort = FALSE)
   out_eval[, abs_shift_vs_consensus := abs(estimate - consensus_est)]
