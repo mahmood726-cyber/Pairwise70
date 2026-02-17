@@ -647,6 +647,24 @@ main <- function() {
   summary_dt <- merge(summary_dt, rank_unc, by = "method", all.x = TRUE, sort = FALSE)
 
   # Composite score: lower is better
+  fill_summary_col <- function(x, default, worst = c("high", "low")) {
+    worst <- match.arg(worst)
+    if (!any(is.finite(x))) return(rep(default, length(x)))
+    worst_val <- if (worst == "high") {
+      max(x[is.finite(x)], na.rm = TRUE)
+    } else {
+      min(x[is.finite(x)], na.rm = TRUE)
+    }
+    x[!is.finite(x)] <- worst_val
+    x[is.na(x)] <- worst_val
+    x
+  }
+  summary_dt[, mean_abs_shift_vs_reml := fill_summary_col(mean_abs_shift_vs_reml, 1e3, worst = "high")]
+  summary_dt[, mean_abs_shift_vs_consensus := fill_summary_col(mean_abs_shift_vs_consensus, 1e3, worst = "high")]
+  summary_dt[, median_se := fill_summary_col(median_se, 1e3, worst = "high")]
+  summary_dt[, sign_flip_rate_vs_reml := fill_summary_col(sign_flip_rate_vs_reml, 1.0, worst = "high")]
+  summary_dt[, convergence := fill_summary_col(convergence, 0.0, worst = "low")]
+  summary_dt[, rank_sd := fill_summary_col(rank_sd, 1e3, worst = "high")]
   scale01 <- function(x) {
     rx <- range(x, na.rm = TRUE)
     if (!is.finite(rx[1]) || !is.finite(rx[2]) || rx[1] == rx[2]) return(rep(0, length(x)))
