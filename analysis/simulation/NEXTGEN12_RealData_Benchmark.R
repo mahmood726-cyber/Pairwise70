@@ -89,6 +89,86 @@ rmr_meta <- function(yi, vi) {
   list(method = "RMR", estimate = est, se = se, ci_lb = ci$lb, ci_ub = ci$ub)
 }
 
+# CRT: Causal Residual Trimming (prototype)
+crt_meta <- function(yi, vi) {
+  k <- length(yi)
+  fit <- tryCatch(metafor::rma(yi, vi, method = "REML"), error = function(e) NULL)
+  if (is.null(fit)) return(list(method = "CRT", estimate = NA_real_, se = NA_real_))
+
+  mu <- safe_num(coef(fit))
+  tau2 <- safe_num(fit$tau2)
+  stud <- abs((yi - mu) / sqrt(vi + tau2 + 1e-8))
+  keep <- stud <= 2.5
+  if (sum(keep) < 3) keep <- order(stud)[seq_len(min(3, k))]
+
+  yi2 <- yi[keep]
+  vi2 <- vi[keep]
+  fit2 <- tryCatch(metafor::rma(yi2, vi2, method = "REML", test = "knha"), error = function(e) NULL)
+  if (is.null(fit2)) return(list(method = "CRT", estimate = NA_real_, se = NA_real_))
+
+  est <- safe_num(coef(fit2))
+  se <- safe_num(fit2$se)
+  ci <- safe_ci(est, se, length(yi2))
+  list(method = "CRT", estimate = est, se = se, ci_lb = ci$lb, ci_ub = ci$ub, n_kept = sum(keep))
+}
+
+# AWH: Adaptive Winsorized Heterogeneity (prototype)
+awh_meta <- function(yi, vi) {
+  k <- length(yi)
+  fit <- tryCatch(metafor::rma(yi, vi, method = "REML"), error = function(e) NULL)
+  if (is.null(fit)) return(list(method = "AWH", estimate = NA_real_, se = NA_real_))
+
+  mu <- safe_num(coef(fit))
+  tau2 <- safe_num(fit$tau2)
+  r <- (yi - mu) / sqrt(vi + tau2 + 1e-8)
+  q_low <- as.numeric(stats::quantile(r, probs = 0.10, na.rm = TRUE))
+  q_high <- as.numeric(stats::quantile(r, probs = 0.90, na.rm = TRUE))
+  r_w <- pmin(pmax(r, q_low), q_high)
+  yi_w <- mu + r_w * sqrt(vi + tau2 + 1e-8)
+
+  w <- 1 / (vi + tau2 + 1e-8)
+  est <- sum(w * yi_w) / sum(w)
+  se <- sqrt(1 / sum(w))
+  ci <- safe_ci(est, se, k)
+  list(method = "AWH", estimate = est, se = se, ci_lb = ci$lb, ci_ub = ci$ub)
+}
+
+# MRSTACK: Stacked Meta-Regression (intercept-only stack prototype)
+mrstack_meta <- function(yi, vi) {
+  k <- length(yi)
+  reml <- tryCatch(metafor::rma(yi, vi, method = "REML"), error = function(e) NULL)
+  hksj <- tryCatch(metafor::rma(yi, vi, method = "REML", test = "knha"), error = function(e) NULL)
+  pet <- tryCatch(metafor::rma(yi, vi, mods = ~ sqrt(vi), method = "REML", test = "knha"), error = function(e) NULL)
+  peese <- tryCatch(metafor::rma(yi, vi, mods = ~ vi, method = "REML", test = "knha"), error = function(e) NULL)
+
+  tbl <- data.table(
+    method = c("REML", "HKSJ", "PET", "PEESE"),
+    estimate = c(
+      if (!is.null(reml)) safe_num(coef(reml)) else NA_real_,
+      if (!is.null(hksj)) safe_num(coef(hksj)) else NA_real_,
+      if (!is.null(pet)) safe_num(coef(pet)[1]) else NA_real_,
+      if (!is.null(peese)) safe_num(coef(peese)[1]) else NA_real_
+    ),
+    se = c(
+      if (!is.null(reml)) safe_num(reml$se) else NA_real_,
+      if (!is.null(hksj)) safe_num(hksj$se) else NA_real_,
+      if (!is.null(pet)) safe_num(pet$se[1]) else NA_real_,
+      if (!is.null(peese)) safe_num(peese$se[1]) else NA_real_
+    )
+  )
+  tbl <- tbl[is.finite(estimate) & is.finite(se) & se > 0]
+  if (nrow(tbl) < 2) return(list(method = "MRSTACK", estimate = NA_real_, se = NA_real_))
+
+  # Softmax on negative SE favors precise components while retaining diversity.
+  logits <- -scale(tbl$se)
+  w <- exp(logits)
+  w <- w / sum(w)
+  est <- sum(w * tbl$estimate)
+  se <- sqrt(sum(w * tbl$se^2) + sum(w * (tbl$estimate - est)^2))
+  ci <- safe_ci(est, se, k)
+  list(method = "MRSTACK", estimate = est, se = se, ci_lb = ci$lb, ci_ub = ci$ub)
+}
+
 # FATIHA: Faithful Adaptive Trimmed Influence Harmonized Aggregation
 fatiha_meta <- function(yi, vi, n_boot_swa = 19) {
   k <- length(yi)
@@ -106,13 +186,22 @@ fatiha_meta <- function(yi, vi, n_boot_swa = 19) {
   qse <- qse_meta(yi, vi)
   lth <- lth_meta(yi, vi)
   rmr <- rmr_meta(yi, vi)
+  crt <- crt_meta(yi, vi)
+  awh <- awh_meta(yi, vi)
+  mrstack <- mrstack_meta(yi, vi)
   pbm <- tryCatch(pbm_meta(yi, vi, n_boot_swa = n_boot_swa), error = function(e) list(estimate = NA_real_, se = NA_real_))
 
   tbl <- data.table(
-    method = c("REML", "HKSJ", "QSE", "LTH", "RMR", "PBM"),
-    estimate = c(reml$estimate, hksj$estimate, qse$estimate, lth$estimate, rmr$estimate, safe_num(pbm$estimate)),
-    se = c(reml$se, hksj$se, qse$se, lth$se, rmr$se, safe_num(pbm$se)),
-    robust = c(0.2, 0.3, 0.6, 0.7, 0.8, 0.9)
+    method = c("REML", "HKSJ", "QSE", "LTH", "RMR", "CRT", "AWH", "MRSTACK", "PBM"),
+    estimate = c(
+      reml$estimate, hksj$estimate, qse$estimate, lth$estimate, rmr$estimate,
+      crt$estimate, awh$estimate, mrstack$estimate, safe_num(pbm$estimate)
+    ),
+    se = c(
+      reml$se, hksj$se, qse$se, lth$se, rmr$se,
+      crt$se, awh$se, mrstack$se, safe_num(pbm$se)
+    ),
+    robust = c(0.2, 0.3, 0.6, 0.7, 0.8, 0.85, 0.75, 0.65, 0.9)
   )
   tbl <- tbl[is.finite(estimate) & is.finite(se) & se > 0]
   if (nrow(tbl) < 2) return(list(method = "FATIHA", estimate = NA_real_, se = NA_real_))
@@ -252,6 +341,9 @@ main <- function() {
     qse <- tryCatch(qse_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
     lth <- tryCatch(lth_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
     rmr <- tryCatch(rmr_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
+    crt <- tryCatch(crt_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
+    awh <- tryCatch(awh_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
+    mrstack <- tryCatch(mrstack_meta(yi, vi), error = function(e) list(estimate = NA_real_, se = NA_real_))
     pbm <- tryCatch({
       setTimeLimit(elapsed = timeout_sec, transient = TRUE)
       on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE), add = TRUE)
@@ -269,6 +361,9 @@ main <- function() {
       eval_row(nm, es$measure, k, "QSE", qse$estimate, qse$se, reml$estimate),
       eval_row(nm, es$measure, k, "LTH", lth$estimate, lth$se, reml$estimate),
       eval_row(nm, es$measure, k, "RMR", rmr$estimate, rmr$se, reml$estimate),
+      eval_row(nm, es$measure, k, "CRT", crt$estimate, crt$se, reml$estimate),
+      eval_row(nm, es$measure, k, "AWH", awh$estimate, awh$se, reml$estimate),
+      eval_row(nm, es$measure, k, "MRSTACK", mrstack$estimate, mrstack$se, reml$estimate),
       eval_row(nm, es$measure, k, "PBM", safe_num(pbm$estimate), safe_num(pbm$se), reml$estimate),
       eval_row(nm, es$measure, k, "FATIHA", fatiha$estimate, fatiha$se, reml$estimate)
     ), fill = TRUE)
