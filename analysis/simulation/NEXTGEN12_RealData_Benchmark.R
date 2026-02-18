@@ -36,6 +36,34 @@ stable_sign <- function(x, eps = 1e-8) {
   s
 }
 
+seed_from_string <- function(x) {
+  vals <- utf8ToInt(as.character(x))
+  if (length(vals) == 0) return(20260218L)
+  as.integer((sum(vals * seq_along(vals)) %% .Machine$integer.max))
+}
+
+downsample_indices <- function(vi, max_k, seed_key, n_strata = 5L) {
+  n <- length(vi)
+  if (n <= max_k) return(seq_len(n))
+  set.seed(seed_from_string(seed_key))
+  ord <- rank(vi, ties.method = "random")
+  strata <- as.integer(cut(ord, breaks = n_strata, labels = FALSE))
+  base_take <- floor(max_k / n_strata)
+  rem_take <- max_k - base_take * n_strata
+  idx <- integer()
+  for (g in seq_len(n_strata)) {
+    g_idx <- which(strata == g)
+    if (length(g_idx) == 0) next
+    take_g <- min(length(g_idx), base_take + as.integer(g <= rem_take))
+    if (take_g > 0) idx <- c(idx, sample(g_idx, size = take_g, replace = FALSE))
+  }
+  if (length(idx) < max_k) {
+    left <- setdiff(seq_len(n), idx)
+    idx <- c(idx, sample(left, size = max_k - length(idx), replace = FALSE))
+  }
+  sort(idx)
+}
+
 safe_ci <- function(est, se, k) {
   if (!is.finite(est) || !is.finite(se) || se <= 0) return(list(lb = NA_real_, ub = NA_real_))
   df <- max(1, k - 2)
@@ -482,7 +510,7 @@ main <- function() {
     yi <- es$yi
     vi <- es$vi
     if (length(yi) > max_k) {
-      keep <- order(vi)[seq_len(max_k)]
+      keep <- downsample_indices(vi, max_k = max_k, seed_key = nm)
       yi <- yi[keep]
       vi <- vi[keep]
     }
@@ -569,10 +597,21 @@ main <- function() {
   reml_baseline <- out[method == "REML", .(
     reml_est = if (is.finite(estimate[1]) && is.finite(se[1]) && se[1] > 0) estimate[1] else NA_real_
   ), by = dataset]
-  consensus_dt <- out[valid_metric_mask, .(consensus_est = median(estimate, na.rm = TRUE)), by = dataset]
+  reference_methods <- c("REML", "HKSJ")
+  consensus_dt <- out[method %in% reference_methods & valid_metric_mask, .(consensus_est = median(estimate, na.rm = TRUE)), by = dataset]
   out_eval <- merge(out, reml_baseline, by = "dataset", all.x = TRUE, sort = FALSE)
   out_eval <- merge(out_eval, consensus_dt, by = "dataset", all.x = TRUE, sort = FALSE)
   out_eval[, abs_shift_vs_consensus := abs(estimate - consensus_est)]
+  valid_eval_mask <- is.finite(out_eval$estimate) & is.finite(out_eval$se) & out_eval$se > 0
+  scale_dt <- out_eval[valid_eval_mask, .(
+    scale_ref = {
+      v <- se[is.finite(se) & se > 0]
+      if (length(v) > 0) pmax(as.numeric(stats::median(v, na.rm = TRUE)), 1e-8) else 1.0
+    }
+  ), by = dataset]
+  out_eval <- merge(out_eval, scale_dt, by = "dataset", all.x = TRUE, sort = FALSE)
+  out_eval[, std_shift_vs_reml := abs_shift_vs_reml / pmax(scale_ref, 1e-8)]
+  out_eval[, std_shift_vs_consensus := abs_shift_vs_consensus / pmax(scale_ref, 1e-8)]
 
   summary_dt <- out_eval[, .(
     n_datasets = uniqueN(dataset[is.finite(estimate) & is.finite(se) & se > 0]),
@@ -581,13 +620,13 @@ main <- function() {
       valid_k <- as.numeric(k[is.finite(estimate) & is.finite(se) & se > 0])
       if (length(valid_k) > 0) median(valid_k, na.rm = TRUE) else NA_real_
     },
-    mean_abs_shift_vs_reml = {
-      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(abs_shift_vs_reml)
-      if (any(valid_mask)) mean(abs_shift_vs_reml[valid_mask], na.rm = TRUE) else NA_real_
+    mean_std_shift_vs_reml = {
+      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(std_shift_vs_reml)
+      if (any(valid_mask)) mean(std_shift_vs_reml[valid_mask], na.rm = TRUE) else NA_real_
     },
-    mean_abs_shift_vs_consensus = {
-      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(abs_shift_vs_consensus)
-      if (any(valid_mask)) mean(abs_shift_vs_consensus[valid_mask], na.rm = TRUE) else NA_real_
+    mean_std_shift_vs_consensus = {
+      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(std_shift_vs_consensus)
+      if (any(valid_mask)) mean(std_shift_vs_consensus[valid_mask], na.rm = TRUE) else NA_real_
     },
     median_se = {
       valid_se <- se[is.finite(estimate) & is.finite(se) & se > 0]
@@ -601,15 +640,15 @@ main <- function() {
 
   # Rank uncertainty via bootstrap over datasets.
   base_metrics <- out_eval[, .(
-    mean_abs_shift_vs_reml = if (any(is.finite(abs_shift_vs_reml))) {
-      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(abs_shift_vs_reml)
-      if (any(valid_mask)) mean(abs_shift_vs_reml[valid_mask], na.rm = TRUE) else NA_real_
+    mean_std_shift_vs_reml = if (any(is.finite(std_shift_vs_reml))) {
+      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(std_shift_vs_reml)
+      if (any(valid_mask)) mean(std_shift_vs_reml[valid_mask], na.rm = TRUE) else NA_real_
     } else {
       NA_real_
     },
-    mean_abs_shift_vs_consensus = if (any(is.finite(abs_shift_vs_consensus))) {
-      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(abs_shift_vs_consensus)
-      if (any(valid_mask)) mean(abs_shift_vs_consensus[valid_mask], na.rm = TRUE) else NA_real_
+    mean_std_shift_vs_consensus = if (any(is.finite(std_shift_vs_consensus))) {
+      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(std_shift_vs_consensus)
+      if (any(valid_mask)) mean(std_shift_vs_consensus[valid_mask], na.rm = TRUE) else NA_real_
     } else {
       NA_real_
     },
@@ -635,8 +674,8 @@ main <- function() {
     sampled_dt <- data.table(dataset = ds, boot_rep = seq_along(ds))
     boot <- merge(sampled_dt, base_metrics, by = "dataset", all.x = TRUE, allow.cartesian = TRUE, sort = FALSE)
     boot_s <- boot[, .(
-      mean_abs_shift_vs_reml = mean(mean_abs_shift_vs_reml, na.rm = TRUE),
-      mean_abs_shift_vs_consensus = mean(mean_abs_shift_vs_consensus, na.rm = TRUE),
+      mean_std_shift_vs_reml = mean(mean_std_shift_vs_reml, na.rm = TRUE),
+      mean_std_shift_vs_consensus = mean(mean_std_shift_vs_consensus, na.rm = TRUE),
       median_se = median(median_se, na.rm = TRUE),
       sign_flip_rate_vs_reml = mean(sign_flip_rate_vs_reml, na.rm = TRUE),
       convergence = mean(convergence, na.rm = TRUE)
@@ -649,8 +688,8 @@ main <- function() {
       x[is.na(x)] <- default
       x
     }
-    boot_s[, mean_abs_shift_vs_reml := fill_col(mean_abs_shift_vs_reml, 1e3)]
-    boot_s[, mean_abs_shift_vs_consensus := fill_col(mean_abs_shift_vs_consensus, 1e3)]
+    boot_s[, mean_std_shift_vs_reml := fill_col(mean_std_shift_vs_reml, 1e3)]
+    boot_s[, mean_std_shift_vs_consensus := fill_col(mean_std_shift_vs_consensus, 1e3)]
     boot_s[, median_se := fill_col(median_se, 1e3)]
     boot_s[, sign_flip_rate_vs_reml := fill_col(sign_flip_rate_vs_reml, 1.0)]
     boot_s[, convergence := fill_col(convergence, 0.0)]
@@ -659,8 +698,8 @@ main <- function() {
       if (!is.finite(rx[1]) || !is.finite(rx[2]) || rx[1] == rx[2]) return(rep(0, length(x)))
       (x - rx[1]) / (rx[2] - rx[1])
     }
-    boot_s[, score_shift := scale01b(mean_abs_shift_vs_reml)]
-    boot_s[, score_consensus := scale01b(mean_abs_shift_vs_consensus)]
+    boot_s[, score_shift := scale01b(mean_std_shift_vs_reml)]
+    boot_s[, score_consensus := scale01b(mean_std_shift_vs_consensus)]
     boot_s[, score_se := scale01b(median_se)]
     boot_s[, score_flip := scale01b(sign_flip_rate_vs_reml)]
     boot_s[, score_convergence := scale01b(1 - convergence)]
@@ -684,8 +723,8 @@ main <- function() {
     x[is.na(x)] <- default
     x
   }
-  summary_dt[, mean_abs_shift_vs_reml := fill_summary_col(mean_abs_shift_vs_reml, 1e3)]
-  summary_dt[, mean_abs_shift_vs_consensus := fill_summary_col(mean_abs_shift_vs_consensus, 1e3)]
+  summary_dt[, mean_std_shift_vs_reml := fill_summary_col(mean_std_shift_vs_reml, 1e3)]
+  summary_dt[, mean_std_shift_vs_consensus := fill_summary_col(mean_std_shift_vs_consensus, 1e3)]
   summary_dt[, median_se := fill_summary_col(median_se, 1e3)]
   summary_dt[, sign_flip_rate_vs_reml := fill_summary_col(sign_flip_rate_vs_reml, 1.0)]
   summary_dt[, convergence := fill_summary_col(convergence, 0.0)]
@@ -695,8 +734,8 @@ main <- function() {
     if (!is.finite(rx[1]) || !is.finite(rx[2]) || rx[1] == rx[2]) return(rep(0, length(x)))
     (x - rx[1]) / (rx[2] - rx[1])
   }
-  summary_dt[, score_shift := scale01(mean_abs_shift_vs_reml)]
-  summary_dt[, score_consensus := scale01(mean_abs_shift_vs_consensus)]
+  summary_dt[, score_shift := scale01(mean_std_shift_vs_reml)]
+  summary_dt[, score_consensus := scale01(mean_std_shift_vs_consensus)]
   summary_dt[, score_se := scale01(median_se)]
   summary_dt[, score_flip := scale01(sign_flip_rate_vs_reml)]
   summary_dt[, score_convergence := scale01(1 - convergence)]
@@ -715,7 +754,7 @@ main <- function() {
   if (nrow(method_fail) > 0) fwrite(method_fail, file.path(out_dir, paste0("nextgen12_realdata_method_failures_", stamp, ".csv")))
 
   cat("NextGen12 real-data benchmark complete\n")
-  print(summary_dt[, .(rank, method, n_datasets, convergence, mean_abs_shift_vs_reml, mean_abs_shift_vs_consensus, median_se, sign_flip_rate_vs_reml, rank_sd, rank_p10, rank_p90, world_score)])
+  print(summary_dt[, .(rank, method, n_datasets, convergence, mean_std_shift_vs_reml, mean_std_shift_vs_consensus, median_se, sign_flip_rate_vs_reml, rank_sd, rank_p10, rank_p90, world_score)])
   cat(sprintf("Datasets attempted: %d\n", length(data_list)))
   cat(sprintf("Datasets evaluated: %d\n", uniqueN(out$dataset)))
   cat(sprintf("Datasets in result matrix: %d\n", n_total))
