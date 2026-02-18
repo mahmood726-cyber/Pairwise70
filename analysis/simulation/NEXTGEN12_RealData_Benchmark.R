@@ -577,7 +577,10 @@ main <- function() {
   summary_dt <- out_eval[, .(
     n_datasets = uniqueN(dataset[is.finite(estimate) & is.finite(se) & se > 0]),
     convergence = mean(is.finite(estimate) & is.finite(se) & se > 0),
-    median_k = median(k, na.rm = TRUE),
+    median_k = {
+      valid_k <- as.numeric(k[is.finite(estimate) & is.finite(se) & se > 0])
+      if (length(valid_k) > 0) median(valid_k, na.rm = TRUE) else NA_real_
+    },
     mean_abs_shift_vs_reml = {
       valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(abs_shift_vs_reml)
       if (any(valid_mask)) mean(abs_shift_vs_reml[valid_mask], na.rm = TRUE) else NA_real_
