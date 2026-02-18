@@ -462,6 +462,16 @@ eval_row <- function(dataset, measure, k, method_name, est, se, baseline) {
   )
 }
 
+anchor_row <- function(dataset, measure, anchor_name, est, se) {
+  data.table(
+    dataset = dataset,
+    measure = measure,
+    anchor = anchor_name,
+    estimate = est,
+    se = se
+  )
+}
+
 main <- function() {
   repo_root <- resolve_repo_root()
   source(file.path(repo_root, "R", "advanced_pooling_v4.R"))
@@ -489,6 +499,7 @@ main <- function() {
   out <- data.table()
   fail <- data.table(dataset = character(), reason = character())
   method_fail <- data.table(dataset = character(), method = character(), reason = character())
+  anchor_out <- data.table(dataset = character(), measure = character(), anchor = character(), estimate = numeric(), se = numeric())
 
   for (nm in data_list) {
     d <- tryCatch({
@@ -518,6 +529,15 @@ main <- function() {
 
     reml <- run_with_timeout({
       fit <- metafor::rma(yi, vi, method = "REML")
+      list(estimate = safe_num(coef(fit)), se = safe_num(fit$se))
+    }, timeout_sec = timeout_sec)
+
+    dl_anchor <- run_with_timeout({
+      fit <- metafor::rma(yi, vi, method = "DL")
+      list(estimate = safe_num(coef(fit)), se = safe_num(fit$se))
+    }, timeout_sec = timeout_sec)
+    pm_anchor <- run_with_timeout({
+      fit <- metafor::rma(yi, vi, method = "PM")
       list(estimate = safe_num(coef(fit)), se = safe_num(fit$se))
     }, timeout_sec = timeout_sec)
 
@@ -590,6 +610,10 @@ main <- function() {
     ), fill = TRUE)
 
     out <- rbind(out, rows, fill = TRUE)
+    anchor_out <- rbind(anchor_out, rbindlist(list(
+      anchor_row(nm, es$measure, "DL", dl_anchor$estimate, dl_anchor$se),
+      anchor_row(nm, es$measure, "PM", pm_anchor$estimate, pm_anchor$se)
+    ), fill = TRUE), fill = TRUE)
   }
 
   n_total <- uniqueN(out$dataset)
@@ -597,8 +621,8 @@ main <- function() {
   reml_baseline <- out[method == "REML", .(
     reml_est = if (is.finite(estimate[1]) && is.finite(se[1]) && se[1] > 0) estimate[1] else NA_real_
   ), by = dataset]
-  reference_methods <- c("REML", "HKSJ")
-  consensus_dt <- out[method %in% reference_methods & valid_metric_mask, .(consensus_est = median(estimate, na.rm = TRUE)), by = dataset]
+  valid_anchor_mask <- is.finite(anchor_out$estimate) & is.finite(anchor_out$se) & anchor_out$se > 0
+  consensus_dt <- anchor_out[valid_anchor_mask, .(consensus_est = median(estimate, na.rm = TRUE)), by = dataset]
   out_eval <- merge(out, reml_baseline, by = "dataset", all.x = TRUE, sort = FALSE)
   out_eval <- merge(out_eval, consensus_dt, by = "dataset", all.x = TRUE, sort = FALSE)
   out_eval[, abs_shift_vs_consensus := abs(estimate - consensus_est)]
@@ -637,6 +661,31 @@ main <- function() {
       if (any(flip_mask)) mean(stable_sign(estimate[flip_mask]) != stable_sign(reml_est[flip_mask]), na.rm = TRUE) else NA_real_
     }
   ), by = method]
+
+  summary_by_measure <- out_eval[, .(
+    n_datasets = uniqueN(dataset[is.finite(estimate) & is.finite(se) & se > 0]),
+    convergence = mean(is.finite(estimate) & is.finite(se) & se > 0),
+    median_k = {
+      valid_k <- as.numeric(k[is.finite(estimate) & is.finite(se) & se > 0])
+      if (length(valid_k) > 0) median(valid_k, na.rm = TRUE) else NA_real_
+    },
+    mean_std_shift_vs_reml = {
+      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(std_shift_vs_reml)
+      if (any(valid_mask)) mean(std_shift_vs_reml[valid_mask], na.rm = TRUE) else NA_real_
+    },
+    mean_std_shift_vs_consensus = {
+      valid_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(std_shift_vs_consensus)
+      if (any(valid_mask)) mean(std_shift_vs_consensus[valid_mask], na.rm = TRUE) else NA_real_
+    },
+    median_se = {
+      valid_se <- se[is.finite(estimate) & is.finite(se) & se > 0]
+      if (length(valid_se) > 0) median(valid_se, na.rm = TRUE) else NA_real_
+    },
+    sign_flip_rate_vs_reml = {
+      flip_mask <- is.finite(estimate) & is.finite(se) & se > 0 & is.finite(reml_est)
+      if (any(flip_mask)) mean(stable_sign(estimate[flip_mask]) != stable_sign(reml_est[flip_mask]), na.rm = TRUE) else NA_real_
+    }
+  ), by = .(measure, method)]
 
   # Rank uncertainty via bootstrap over datasets.
   base_metrics <- out_eval[, .(
@@ -744,17 +793,80 @@ main <- function() {
   setorder(summary_dt, world_score, method)
   summary_dt[, rank := seq_len(.N)]
 
+  fill_measure_col <- function(x, default) {
+    if (!any(is.finite(x))) return(rep(default, length(x)))
+    x[!is.finite(x)] <- default
+    x[is.na(x)] <- default
+    x
+  }
+  scale01m <- function(x) {
+    rx <- range(x, na.rm = TRUE)
+    if (!is.finite(rx[1]) || !is.finite(rx[2]) || rx[1] == rx[2]) return(rep(0, length(x)))
+    (x - rx[1]) / (rx[2] - rx[1])
+  }
+  summary_by_measure[, mean_std_shift_vs_reml := fill_measure_col(mean_std_shift_vs_reml, 1e3), by = measure]
+  summary_by_measure[, mean_std_shift_vs_consensus := fill_measure_col(mean_std_shift_vs_consensus, 1e3), by = measure]
+  summary_by_measure[, median_se := fill_measure_col(median_se, 1e3), by = measure]
+  summary_by_measure[, sign_flip_rate_vs_reml := fill_measure_col(sign_flip_rate_vs_reml, 1.0), by = measure]
+  summary_by_measure[, convergence := fill_measure_col(convergence, 0.0), by = measure]
+  summary_by_measure[, score_shift := scale01m(mean_std_shift_vs_reml), by = measure]
+  summary_by_measure[, score_consensus := scale01m(mean_std_shift_vs_consensus), by = measure]
+  summary_by_measure[, score_se := scale01m(median_se), by = measure]
+  summary_by_measure[, score_flip := scale01m(sign_flip_rate_vs_reml), by = measure]
+  summary_by_measure[, score_convergence := scale01m(1 - convergence), by = measure]
+  summary_by_measure[, world_score_measure := 0.28 * score_shift + 0.28 * score_consensus + 0.20 * score_se + 0.12 * score_flip + 0.12 * score_convergence]
+  setorder(summary_by_measure, measure, world_score_measure, method)
+  summary_by_measure[, rank_within_measure := seq_len(.N), by = measure]
+  summary_by_measure[, norm_rank_within_measure := rank_within_measure / .N, by = measure]
+  meta_rank <- summary_by_measure[, .(
+    n_measures = uniqueN(measure),
+    mean_norm_rank = mean(norm_rank_within_measure, na.rm = TRUE),
+    median_norm_rank = median(norm_rank_within_measure, na.rm = TRUE),
+    worst_norm_rank = max(norm_rank_within_measure, na.rm = TRUE)
+  ), by = method]
+  setorder(meta_rank, mean_norm_rank, median_norm_rank, worst_norm_rank, method)
+  meta_rank[, meta_rank := seq_len(.N)]
+
   stamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
   out_dir <- file.path(repo_root, "analysis", "results")
   dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
   fwrite(out, file.path(out_dir, paste0("nextgen12_realdata_raw_", stamp, ".csv")))
   fwrite(summary_dt, file.path(out_dir, paste0("nextgen12_realdata_summary_", stamp, ".csv")))
+  fwrite(summary_by_measure, file.path(out_dir, paste0("nextgen12_realdata_summary_by_measure_", stamp, ".csv")))
+  fwrite(meta_rank, file.path(out_dir, paste0("nextgen12_realdata_meta_rank_", stamp, ".csv")))
   if (nrow(fail) > 0) fwrite(fail, file.path(out_dir, paste0("nextgen12_realdata_failures_", stamp, ".csv")))
   if (nrow(method_fail) > 0) fwrite(method_fail, file.path(out_dir, paste0("nextgen12_realdata_method_failures_", stamp, ".csv")))
 
+  claim_safe <- c(
+    "# NextGen12 Editorial Claim-Safe Summary",
+    "",
+    "## Scope",
+    "- This benchmark reports comparative stability under a predefined composite score.",
+    "- Rankings do not imply universal causal superiority across all evidence synthesis settings.",
+    "",
+    "## Guardrails",
+    "- Consensus anchor is external to candidate ranking methods (DL/PM only).",
+    "- Shift metrics are standardized within dataset to reduce scale-mixing bias across OR/SMD outcomes.",
+    "- Per-measure leaderboards are produced before cross-measure aggregation.",
+    "",
+    "## Reporting Language",
+    "- Use: 'ranked highest under this benchmark's composite criteria'.",
+    "- Avoid: 'best method overall' or 'dominates all current methods' without external validation.",
+    "",
+    "## Primary Outputs",
+    sprintf("- Overall summary: nextgen12_realdata_summary_%s.csv", stamp),
+    sprintf("- Measure-stratified summary: nextgen12_realdata_summary_by_measure_%s.csv", stamp),
+    sprintf("- Cross-measure meta-rank: nextgen12_realdata_meta_rank_%s.csv", stamp)
+  )
+  writeLines(claim_safe, file.path(out_dir, paste0("nextgen12_editorial_claim_safe_", stamp, ".md")))
+
   cat("NextGen12 real-data benchmark complete\n")
   print(summary_dt[, .(rank, method, n_datasets, convergence, mean_std_shift_vs_reml, mean_std_shift_vs_consensus, median_se, sign_flip_rate_vs_reml, rank_sd, rank_p10, rank_p90, world_score)])
+  cat("Top methods by measure:\n")
+  print(summary_by_measure[order(measure, rank_within_measure)][, .(measure, rank_within_measure, method, world_score_measure)][rank_within_measure <= 5])
+  cat("Cross-measure meta-rank:\n")
+  print(meta_rank[, .(meta_rank, method, n_measures, mean_norm_rank, median_norm_rank, worst_norm_rank)])
   cat(sprintf("Datasets attempted: %d\n", length(data_list)))
   cat(sprintf("Datasets evaluated: %d\n", uniqueN(out$dataset)))
   cat(sprintf("Datasets in result matrix: %d\n", n_total))
