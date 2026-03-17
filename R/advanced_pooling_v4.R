@@ -1490,5 +1490,16 @@ compare_methods_v4 <- function(yi, vi) {
     )
   }
 
+  # Triple-Guard Ensemble Pooling (TGEP)
+  tgep <- tryCatch(tgep_meta(yi, vi, n_boot = 100), error = function(e) NULL)
+  if (!is.null(tgep)) {
+    results$TGEP <- data.frame(
+      Method = "TGEP", Estimate = round(tgep$estimate, 4),
+      SE = round(tgep$se, 4), CI_Lower = round(tgep$ci_lb, 4),
+      CI_Upper = round(tgep$ci_ub, 4), PValue = round(tgep$pvalue, 4),
+      k = k
+    )
+  }
+
   do.call(rbind, results)
 }

@@ -1,0 +1,59 @@
+
+R version 4.5.2 (2025-10-31 ucrt) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> #!/usr/bin/env Rscript
+> 
+> # Full Simulation Study - V4 Methods
+> # 2000 iterations x 25 scenarios = 50,000 simulations
+> setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/simulation")
+> 
+> source("Comprehensive_Testing_Framework.R")
+Optional package not installed: mclust - some methods may use fallback
+Loading required package: Matrix
+Loading required package: metadat
+Loading required package: numDeriv
+
+Loading the 'metafor' package (version 4.8-0). For an
+introduction to the package please type: help(metafor)
+
+> 
+> cat("=== FULL SIMULATION STUDY ===\n")
+=== FULL SIMULATION STUDY ===
+> cat("Iterations: 2000 x 25 scenarios = 50,000 simulations\n")
+Iterations: 2000 x 25 scenarios = 50,000 simulations
+> cat("Methods: REML, HKSJ, WRD, CBM, RBM, SWA, TAS, EVE, PVM, AEM, SPE, SMS\n\n")
+Methods: REML, HKSJ, WRD, CBM, RBM, SWA, TAS, EVE, PVM, AEM, SPE, SMS
+
+> 
+> cat("Estimated time: 8-12 hours (single core, Windows)\n")
+Estimated time: 8-12 hours (single core, Windows)
+> cat("Start time:", Sys.time(), "\n\n")
+Start time: 1768583024 
+
+> 
+> # Run full simulation
+> full_results <- run_comprehensive_simulation(
++     n_sim = 2000,
++     scenarios = get_all_scenarios(),
++     n_cores = 1,  # Windows compatibility
++     seed = 20260116
++ )
+Running 50000 simulations across 1 cores...

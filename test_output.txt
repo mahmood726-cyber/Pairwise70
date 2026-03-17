@@ -1,0 +1,82 @@
+
+R version 4.5.2 (2025-10-31 ucrt) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> #!/usr/bin/env Rscript
+> 
+> # Simple test of new methods
+> set.seed(123)
+> yi <- c(0.25, 0.30, 0.28, 0.35, 0.22, 0.31, 0.29, 0.33, 0.27, 0.26)
+> vi <- c(0.02, 0.01, 0.02, 0.01, 0.03, 0.02, 0.01, 0.02, 0.02, 0.01)
+> 
+> cat('Toy data: k =', length(yi), '\n')
+Toy data: k = 10 
+> 
+> # Source the methods
+> source('R/advanced_pooling_v4.R')
+> 
+> # Test WRD
+> cat('\nTesting WRD...\n')
+
+Testing WRD...
+> result <- wrd_meta(yi, vi)
+> cat('WRD: Estimate =', result$estimate, 'SE =', result$se, '\n')
+WRD: Estimate = 0.286 SE = 0.01119391 
+> 
+> # Test RBM
+> cat('\nTesting RBM...\n')
+
+Testing RBM...
+> result <- rbm_meta(yi, vi)
+> cat('RBM: Estimate =', result$estimate, 'SE =', result$se, '\n')
+RBM: Estimate = 0.2754676 SE = 0.07302029 
+> 
+> # Test EVE
+> cat('\nTesting EVE...\n')
+
+Testing EVE...
+> result <- eve_meta(yi, vi)
+> cat('EVE: Estimate =', result$estimate, 'SE =', result$se, '\n')
+EVE: Estimate = 0.2917073 SE = 0.03828826 
+> 
+> # Test AEM
+> cat('\nTesting AEM...\n')
+
+Testing AEM...
+> result <- aem_meta(yi, vi)
+> cat('AEM: Estimate =', result$estimate, 'SE =', result$se, '\n')
+AEM: Estimate = 0.2917073 SE = 0.01845417 
+> 
+> # Test SMS
+> cat('\nTesting SMS...\n')
+
+Testing SMS...
+> result <- sms_meta(yi, vi)
+Warning message:
+In sms_meta(yi, vi) :
+  SMS designed for k < 10 , using HKSJ for this analysis.
+> cat('SMS: Estimate =', result$estimate, 'SE =', result$se, '\n')
+SMS: Estimate = 0.2917073 SE = 0.01159157 
+> 
+> cat('\n=== Basic tests passed! ===\n')
+
+=== Basic tests passed! ===
+> 
+> proc.time()
+   user  system elapsed 
+  19.62    1.07   23.89 

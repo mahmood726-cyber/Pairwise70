@@ -1,0 +1,16 @@
+Optional package not installed: mclust - some methods may use fallback
+Loading required package: Matrix
+Loading required package: metadat
+Loading required package: numDeriv
+
+Loading the 'metafor' package (version 4.8-0). For an
+introduction to the package please type: help(metafor)
+
+=== FULL SIMULATION STUDY ===
+Iterations: 2000 x 25 scenarios = 50,000 simulations
+Methods: REML, HKSJ, WRD, CBM, RBM, SWA, TAS, EVE, PVM, AEM, SPE, SMS
+
+Estimated time: 8-12 hours (single core, Windows)
+Start time: 1768637237 
+
+Running 50000 simulations across 1 cores...

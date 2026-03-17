@@ -27,6 +27,8 @@ library(data.table)
 
 # Source the new methods
 source("../../R/advanced_pooling_v4.R", chdir = TRUE)
+# GRMA
+source("../../R/grma_meta.R", chdir = TRUE)
 # For MWM reference - source existing methods if available
 tryCatch(source("../../R/advanced_pooling.R", chdir = TRUE), error = function(e) {
   message("Note: V3 methods not available - running V4 only")
@@ -262,6 +264,14 @@ get_all_methods <- function() {
 
     SMS = function(yi, vi) {
       sms_meta(yi, vi)
+    },
+
+    GRMA = function(yi, vi) {
+      grma_meta(yi, vi, effect_guard = TRUE, n_boot = 499, bca = TRUE)
+    },
+
+    GRMA_noguard = function(yi, vi) {
+      grma_meta(yi, vi, effect_guard = FALSE, n_boot = 499, bca = TRUE)
     }
   )
 }

@@ -1,0 +1,73 @@
+
+R version 4.5.2 (2025-10-31 ucrt) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> #!/usr/bin/env Rscript
+> 
+> # Debug trimfill
+> library(metafor)
+Loading required package: Matrix
+Loading required package: metadat
+Loading required package: numDeriv
+
+Loading the 'metafor' package (version 4.8-0). For an
+introduction to the package please type: help(metafor)
+
+> 
+> set.seed(123)
+> yi <- rnorm(10, 0.3, 0.2)
+> vi <- rexp(10, 10) + 0.01
+> 
+> tf <- tryCatch(
++   trimfill(yi, vi, estimator = "R0", method = "REML"),
++   error = function(e) rma(yi, vi, method = "REML")
++ )
+> 
+> cat("class(tf):", class(tf), "\n")
+class(tf): rma.uni rma 
+> cat("names(tf):", names(tf), "\n")
+names(tf): b beta se zval pval ci.lb ci.ub vb tau2 se.tau2 tau2.fix tau2.f I2 H2 R2 vt QE QEp QM QMdf QMp k k.f k.eff k.all p p.eff parms int.only int.incl intercept allvipos coef.na yi vi X weights yi.f vi.f X.f weights.f M chksumyi chksumvi chksumX outdat.f ni ni.f ids not.na subset slab slab.null measure method model weighted test dfs ddf s2w btt m digits level control verbose add to drop00 fit.stats data formula.yi formula.mods version call time 
+> cat("tf$k:", tf$k, "\n")
+tf$k: 10 
+> 
+> if ("fill" %in% names(tf)) {
++   cat("tf$fill exists\n")
++   cat("class(tf$fill):", class(tf$fill), "\n")
++   if (is.data.frame(tf$fill)) {
++     cat("nrow(tf$fill):", nrow(tf$fill), "\n")
++     print(tf$fill)
++   }
++ } else {
++   cat("tf$fill does NOT exist\n")
++ }
+tf$fill does NOT exist
+> 
+> cat("coef(tf):", coef(tf), "\n")
+coef(tf): 0.3860209 
+> cat("tf$se:", tf$se, "\n")
+tf$se: 0.08312492 
+> cat("tf$ci.lb:", tf$ci.lb, "\n")
+tf$ci.lb: 0.223099 
+> cat("tf$ci.ub:", tf$ci.ub, "\n")
+tf$ci.ub: 0.5489427 
+> 
+> proc.time()
+   user  system elapsed 
+   1.18    0.07    1.23 

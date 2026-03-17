@@ -159,6 +159,8 @@ C:/Users/user/OneDrive - NHS/Documents/Pairwise70/
 | `analysis/MINOR_REVISIONS.R` | Minor revision responses |
 | `analysis/fragility_index_analysis.R` | Core fragility calculations |
 | `analysis/MA4_RESEARCH_SYNTHESIS_ANALYSIS.R` | Comprehensive analysis |
+| `R/tgep_meta.R` | TGEP implementation |
+| `run_impact_analysis.R` | Real-world benchmark of TGEP |
 
 ### Output Files - Data
 
@@ -321,6 +323,14 @@ python C:/Users/user/mafi_functional_test.py
 ## Technical Details
 
 ### Statistical Methods
+
+#### Triple-Guard Ensemble Pooling (TGEP)
+- **Concept**: A frequentist ensemble (stacking) of three specialized "guards":
+  - **Spatial Guard**: Grey relational similarity to robust anchors.
+  - **Magnitude Guard**: Winsorized robust M-estimation.
+  - **Bias Guard**: Selection-weight adjustment for publication bias.
+- **Inference**: LOO-CV predictive weighting ($w \propto \exp(-MSE)$) with bootstrap SE.
+- **Performance**: Restores coverage to >90% in publication bias scenarios (vs 72% for REML).
 
 #### Random Effects Meta-Analysis
 - Method: DerSimonian-Laird

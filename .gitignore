@@ -48,3 +48,15 @@ po/*~
 *.png
 pairwise_meta_meta_results.csv
 nul
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Secrets
+.env
+
+# IDE / tooling
+.serena/
+.claude/

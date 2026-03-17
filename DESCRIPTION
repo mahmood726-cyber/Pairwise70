@@ -12,7 +12,8 @@ Description: Collection of 501 pairwise meta-analysis datasets systematically ex
     Contains approximately 50,000+ individual randomized controlled trials across diverse
     medical specialties. Designed for meta-research, methodological studies, education,
     and software validation in meta-analysis. Includes 13 novel advanced pooling methods:
-    V3 (MWM, SIT, ARP) and V4 (WRD, CBM, RBM, SWA, TAS, EVE, PVM, AEM, SPE, SMS)
+    V3 (MWM, SIT, ARP), V4 (WRD, CBM, RBM, SWA, TAS, EVE, PVM, AEM, SPE, SMS),
+    and GRMA (Grey Relational Meta-Analysis with Tukey bisquare effect guard)
     for robust meta-analysis with improved coverage, outlier handling, and bias correction.
 License: MIT
 Encoding: UTF-8

@@ -1,0 +1,77 @@
+
+R version 4.5.2 (2025-10-31 ucrt) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> #!/usr/bin/env Rscript
+> 
+> # Debug SPE and TAS
+> setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70")
+> source("R/advanced_pooling_v4.R")
+> 
+> set.seed(123)
+> yi <- rnorm(10, 0.3, 0.2)
+> vi <- rexp(10, 10) + 0.01
+> 
+> cat("yi:", yi, "\n")
+yi: 0.1879049 0.2539645 0.6117417 0.3141017 0.3258575 0.643013 0.3921832 0.04698775 0.1626294 0.2108676 
+> cat("vi:", vi, "\n")
+vi: 0.05439655 0.04771178 0.0288284 0.09497861 0.1663204 0.05787604 0.06909348 0.4141012 0.09431497 0.1065871 
+> 
+> # Debug SPE
+> cat("\n=== SPE Debug ===\n")
+
+=== SPE Debug ===
+> spe <- spe_meta(yi, vi, n_samples = 1000, burnin = 100)
+> cat("SPE tau2_samples range:", range(spe$tau2_samples), "\n")
+SPE tau2_samples range: 0.001 0.001 
+> cat("SPE theta_samples range:", range(spe$theta_samples), "\n")
+SPE theta_samples range: 0.3848622 0.3848622 
+> cat("SPE theta_samples sd:", sd(spe$theta_samples), "\n")
+SPE theta_samples sd: 0 
+> cat("SPE accept_rate:", spe$accept_rate, "\n")
+SPE accept_rate: 1 
+> cat("SPE estimate:", spe$estimate, "\n")
+SPE estimate: 0.3848622 
+> cat("SPE se:", spe$se, "\n")
+SPE se: 0 
+> 
+> # Debug TAS
+> cat("\n=== TAS Debug ===\n")
+
+=== TAS Debug ===
+> tas <- tas_meta(yi, vi)
+> cat("TAS n_imputed:", tas$n_imputed, "\n")
+TAS n_imputed:  
+> cat("TAS shrinkage_factor:", tas$shrinkage_factor, "\n")
+TAS shrinkage_factor: 0.7 
+> cat("TAS shrinkage_weight:", tas$shrinkage_weight, "\n")
+TAS shrinkage_weight: 0.2 
+> cat("TAS tf_estimate:", tas$tf_estimate, "\n")
+TAS tf_estimate: 0.3860209 
+> cat("TAS shrunk_estimate:", tas$shrunk_estimate, "\n")
+TAS shrunk_estimate: 0.3860209 
+> cat("TAS estimate:", tas$estimate, "\n")
+TAS estimate: 0.3860209 
+> cat("TAS se:", tas$se, "\n")
+TAS se:  
+> 
+> proc.time()
+   user  system elapsed 
+   1.25    0.17    1.35 

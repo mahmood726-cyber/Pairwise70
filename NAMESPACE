@@ -26,3 +26,7 @@ export(spe_meta)
 # V4 Methods - Category E: Specialized Methods
 export(sms_meta)
 export(compare_methods_v4)
+
+# GRMA - Grey Relational Meta-Analysis
+export(grma_meta)
+export(grma_loo)

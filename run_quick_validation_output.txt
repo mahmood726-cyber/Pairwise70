@@ -1,0 +1,126 @@
+
+R version 4.5.2 (2025-10-31 ucrt) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> #!/usr/bin/env Rscript
+> 
+> # Quick Validation of V4 Methods
+> # Run 50 iterations x 25 scenarios = 1250 simulations
+> 
+> setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/simulation")
+> 
+> source("Comprehensive_Testing_Framework.R")
+Optional package not installed: mclust - some methods may use fallback
+Loading required package: Matrix
+Loading required package: metadat
+Loading required package: numDeriv
+
+Loading the 'metafor' package (version 4.8-0). For an
+introduction to the package please type: help(metafor)
+
+> 
+> cat("=== QUICK VALIDATION ===\n")
+=== QUICK VALIDATION ===
+> cat("Iterations: 50 x 25 scenarios = 1250 simulations\n")
+Iterations: 50 x 25 scenarios = 1250 simulations
+> cat("Methods: REML, HKSJ, WRD, CBM, RBM, SWA, TAS, EVE, PVM, AEM, SPE, SMS\n\n")
+Methods: REML, HKSJ, WRD, CBM, RBM, SWA, TAS, EVE, PVM, AEM, SPE, SMS
+
+> 
+> # Run quick validation (single core for Windows compatibility)
+> quick_results <- run_quick_validation(n_sim = 50, n_cores = 1)
+=== QUICK VALIDATION ===
+Iterations: 50 x 25 scenarios
+Running 1250 simulations across 1 cores...
+Completed: 16198 results from 1250 simulations
+    method  mean_bias mean_rmse mean_coverage mean_ci_width mean_convergence
+    <char>      <num>     <num>         <num>         <num>            <num>
+ 1:    SMS 0.05485994 0.1454591     0.8964195    0.58823993           0.9992
+ 2:    PVM 0.05745908 0.1492845     0.8460870    0.45465141           1.0000
+ 3:    SWA 0.05586710 0.1493765     0.8752944    0.53219124           0.9992
+ 4:   REML 0.05910408 0.1503248     0.8388564    0.49032560           0.9992
+ 5:   HKSJ 0.05910408 0.1503248     0.8769760    0.56819237           0.9992
+ 6:    EVE 0.05910408 0.1503248     0.9071489    0.60676200           0.9992
+ 7:    TAS 0.05910408 0.1503248     0.8889760    0.58027317           0.9992
+ 8:    AEM 0.05957084 0.1506201     0.8971847    0.59338318           0.9992
+ 9:    SPE 0.06116219 0.1514921     0.1124415    0.05673773           0.9992
+10:    MWM 0.06105248 0.1523692     0.9013402    0.61624231           0.9992
+11:    WRD 0.06845170 0.1688090     0.8946619    0.65728584           0.9992
+12:    CBM 0.06342057 0.1847600     0.9825739    1.81039813           0.9912
+13:    RBM 0.07596434 0.2327259     0.9490967    1.02263042           0.9992
+There were 50 or more warnings (use warnings() to see the first 50)
+> 
+> cat("\n=== METHOD SUMMARY (sorted by RMSE) ===\n")
+
+=== METHOD SUMMARY (sorted by RMSE) ===
+> print(quick_results$method_summary)
+    method  mean_bias mean_rmse mean_coverage mean_ci_width mean_convergence
+    <char>      <num>     <num>         <num>         <num>            <num>
+ 1:    SMS 0.05485994 0.1454591     0.8964195    0.58823993           0.9992
+ 2:    PVM 0.05745908 0.1492845     0.8460870    0.45465141           1.0000
+ 3:    SWA 0.05586710 0.1493765     0.8752944    0.53219124           0.9992
+ 4:   REML 0.05910408 0.1503248     0.8388564    0.49032560           0.9992
+ 5:   HKSJ 0.05910408 0.1503248     0.8769760    0.56819237           0.9992
+ 6:    EVE 0.05910408 0.1503248     0.9071489    0.60676200           0.9992
+ 7:    TAS 0.05910408 0.1503248     0.8889760    0.58027317           0.9992
+ 8:    AEM 0.05957084 0.1506201     0.8971847    0.59338318           0.9992
+ 9:    SPE 0.06116219 0.1514921     0.1124415    0.05673773           0.9992
+10:    MWM 0.06105248 0.1523692     0.9013402    0.61624231           0.9992
+11:    WRD 0.06845170 0.1688090     0.8946619    0.65728584           0.9992
+12:    CBM 0.06342057 0.1847600     0.9825739    1.81039813           0.9912
+13:    RBM 0.07596434 0.2327259     0.9490967    1.02263042           0.9992
+> 
+> cat("\n=== COVERAGE BY METHOD ===\n")
+
+=== COVERAGE BY METHOD ===
+> coverage_summary <- quick_results$metrics[, .(method, scenario, coverage)]
+> for (m in unique(coverage_summary$method)) {
++   cov_vals <- coverage_summary[method == m, mean(coverage)]
++   cat(sprintf("%-5s: %.1f%% coverage\n", m, cov_vals * 100))
++ }
+REML : 83.9% coverage
+HKSJ : 87.7% coverage
+MWM  : 90.1% coverage
+WRD  : 89.5% coverage
+CBM  : 98.3% coverage
+RBM  : 94.9% coverage
+SWA  : 87.5% coverage
+TAS  : 88.9% coverage
+EVE  : 90.7% coverage
+PVM  : 84.6% coverage
+AEM  : 89.7% coverage
+SPE  : 11.2% coverage
+SMS  : 89.6% coverage
+> 
+> # Save results
+> saveRDS(quick_results$results, file = "../results/v4_quick_validation.rds")
+> saveRDS(quick_results$metrics, file = "../results/v4_quick_validation_metrics.rds")
+> 
+> cat("\n=== Results saved ===\n")
+
+=== Results saved ===
+> cat("../results/v4_quick_validation.rds\n")
+../results/v4_quick_validation.rds
+> cat("../results/v4_quick_validation_metrics.rds\n")
+../results/v4_quick_validation_metrics.rds
+> 
+> proc.time()
+   user  system elapsed 
+2511.21  119.54 2636.93 

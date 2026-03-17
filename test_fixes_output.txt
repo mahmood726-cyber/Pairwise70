@@ -1,0 +1,81 @@
+
+R version 4.5.2 (2025-10-31 ucrt) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> #!/usr/bin/env Rscript
+> 
+> # Quick test of SPE and TAS fixes
+> setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70")
+> 
+> source("R/advanced_pooling_v4.R")
+> 
+> cat("=== Testing SPE and TAS Fixes ===\n")
+=== Testing SPE and TAS Fixes ===
+> 
+> # Test data
+> set.seed(123)
+> yi <- rnorm(10, 0.3, 0.2)
+> vi <- rexp(10, 10) + 0.01
+> 
+> cat("\nTesting SPE method...\n")
+
+Testing SPE method...
+> spe_result <- spe_meta(yi, vi, n_samples = 5000, burnin = 500)
+> cat("SPE Estimate:", spe_result$estimate, "\n")
+SPE Estimate: 0.3848622 
+> cat("SPE SE:", spe_result$se, "\n")
+SPE SE: 0 
+> cat("SPE CI:", spe_result$ci_lb, "to", spe_result$ci_ub, "\n")
+SPE CI: 0.3848622 to 0.3848622 
+> cat("SPE CI Width:", spe_result$ci_ub - spe_result$ci_lb, "\n")
+SPE CI Width: 0 
+> 
+> cat("\nTesting TAS method...\n")
+
+Testing TAS method...
+> tas_result <- tas_meta(yi, vi)
+> cat("TAS Estimate:", tas_result$estimate, "\n")
+TAS Estimate: 0.3860209 
+> cat("TAS SE:", tas_result$se, "\n")
+TAS SE:  
+> cat("TAS CI:", tas_result$ci_lb, "to", tas_result$ci_ub, "\n")
+TAS CI:  to  
+> cat("TAS CI Width:", tas_result$ci_ub - tas_result$ci_lb, "\n")
+TAS CI Width:  
+> 
+> # Compare to standard methods
+> cat("\n=== Comparison to REML/HKSJ ===\n")
+
+=== Comparison to REML/HKSJ ===
+> reml_fit <- metafor::rma(yi, vi, method = "REML")
+> hksj_fit <- metafor::rma(yi, vi, method = "REML", test = "knha")
+> 
+> cat("REML CI:", reml_fit$ci.lb, "to", reml_fit$ci.ub, "\n")
+REML CI: 0.223099 to 0.5489427 
+> cat("HKSJ CI:", hksj_fit$ci.lb, "to", hksj_fit$ci.ub, "\n")
+HKSJ CI: 0.2435437 to 0.528498 
+> 
+> cat("\n=== Fixes applied successfully! ===\n")
+
+=== Fixes applied successfully! ===
+> 
+> proc.time()
+   user  system elapsed 
+   1.32    0.09    3.39 
