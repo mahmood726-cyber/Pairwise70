@@ -1767,5 +1767,84 @@ Based on methodology from analysis of 4,424 Cochrane meta-analyses
             URL.revokeObjectURL(url);
         }
     </script>
+    <script>
+        window.__webrValidationConfig = {
+            appName: 'MAFI Calculator',
+            intro: 'Loads the built-in example dataset and checks the displayed fragility outputs against the published scoring thresholds.',
+            async prepare(h) {
+                document.querySelectorAll('.tab')[2]?.click();
+                await h.sleep(100);
+                document.querySelector('#exampleInput .stat-box')?.click();
+                await h.sleep(150);
+                if (typeof runAnalysis === 'function') {
+                    runAnalysis();
+                }
+            },
+            async ready(h) {
+                await h.waitFor(() => !document.getElementById('resultsSection').classList.contains('hidden'));
+            },
+            tests: [
+                {
+                    name: 'Displayed study count matches the loaded example rows',
+                    collect(h) {
+                        return {
+                            displayedK: h.parseNumber(document.getElementById('numStudies').textContent),
+                            tableRows: document.querySelectorAll('#studyTableBody tr').length,
+                        };
+                    },
+                    r(payload) {
+                        return `
+displayed_k <- ${payload.displayedK}
+table_rows <- ${payload.tableRows}
+if (displayed_k == table_rows) {
+  "PASS|The displayed study count matches the loaded example dataset."
+} else {
+  paste0("FAIL|The results panel reports ", displayed_k, " studies but the example table contains ", table_rows, " rows.")
+}`.trim();
+                    }
+                },
+                {
+                    name: 'MAFI label matches the displayed score threshold',
+                    collect(h) {
+                        return {
+                            score: Number(document.getElementById('mafiValue').textContent.trim()),
+                            label: document.getElementById('mafiClassification').textContent.trim(),
+                        };
+                    },
+                    r(payload, h) {
+                        return `
+score <- ${payload.score}
+label <- ${h.rString(payload.label)}
+expected <- if (score <= 0.15) "Robust" else if (score <= 0.30) "Low Fragility" else if (score <= 0.50) "Moderate Fragility" else "High Fragility"
+if (label == expected) {
+  "PASS|The displayed MAFI label matches the score threshold."
+} else {
+  paste0("FAIL|Score ", round(score, 3), " implies ", expected, " but the page shows ", label, ".")
+}`.trim();
+                    }
+                },
+                {
+                    name: 'Primary variant card matches the main MAFI score',
+                    collect() {
+                        return {
+                            mainScore: Number(document.getElementById('mafiValue').textContent.trim()),
+                            variantScore: Number(document.getElementById('mafi5comp').textContent.trim()),
+                        };
+                    },
+                    r(payload) {
+                        return `
+main_score <- ${payload.mainScore}
+variant_score <- ${payload.variantScore}
+if (abs(main_score - variant_score) < 1e-8) {
+  "PASS|The primary 5-component variant card matches the main MAFI display."
+} else {
+  paste0("FAIL|Main score ", main_score, " does not match the primary variant score ", variant_score, ".")
+}`.trim();
+                    }
+                }
+            ]
+        };
+    </script>
+    <script src="../_shared/webr-validation.js"></script>
 </body>
 </html>
