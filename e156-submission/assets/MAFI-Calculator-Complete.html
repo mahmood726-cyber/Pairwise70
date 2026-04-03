@@ -2338,11 +2338,19 @@ LEAVE-ONE-OUT RESULTS
             document.getElementById('exportText').value = report;
         }
 
+        function csvSafe(val) {
+            var s = String(val == null ? '' : val);
+            // CSV formula injection: prepend tick for dangerous prefixes (NOT minus — corrupts negative medical values)
+            if (/^[=+@\t\r]/.test(s)) { s = "'" + s; }
+            if (/[,"\r\n]/.test(s)) { return '"' + s.replace(/"/g, '""') + '"'; }
+            return s;
+        }
+
         function exportCSV() {
             const frag = analysisResults.fragility;
             let csv = 'Study,Pooled_Without,CI_Lower,CI_Upper,Direction_Changed,Significance_Changed\n';
             frag.looResults.forEach(r => {
-                csv += `"${r.studyName}",${r.pooledWithout},${r.ciLower},${r.ciUpper},${r.directionChanged},${r.significanceChanged}\n`;
+                csv += csvSafe(r.studyName) + ',' + r.pooledWithout + ',' + r.ciLower + ',' + r.ciUpper + ',' + r.directionChanged + ',' + r.significanceChanged + '\n';
             });
             downloadFile('mafi_results.csv', csv, 'text/csv');
         }
