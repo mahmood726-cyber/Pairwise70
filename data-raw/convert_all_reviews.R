@@ -3,10 +3,10 @@
 
 library(tools)
 
-setwd('C:/Users/user/OneDrive - NHS/Documents/Pairwise70')
+setwd('C:/Projects/Pairwise70')
 
 # Discover all pairwise CSV files
-pairwise_dir <- 'C:/Users/user/OneDrive - NHS/Documents/CochraneDataExtractor/data/pairwise'
+pairwise_dir <- 'C:/Projects/CochraneDataExtractor/data/pairwise'
 all_csv_files <- list.files(pairwise_dir, pattern = "data-rows\\.csv$", full.names = TRUE)
 
 cat(paste0("=== COCHRANE PAIRWISE DATA CONVERSION ===\n"))
