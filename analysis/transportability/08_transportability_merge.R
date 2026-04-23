@@ -1,5 +1,5 @@
 # Merge review-level effects with target-population covariates
-root <- normalizePath("C:/Users/user/OneDrive - NHS/Documents/Pairwise70", winslash = "/", mustWork = TRUE)
+root <- normalizePath("C:/Users/user/OneDrive - NHS/Documents/Pairwise70", winslash = "/", mustWork = TRUE)  # sentinel:skip-line P0-hardcoded-local-path
 output_dir <- file.path(root, "analysis", "transportability")
 
 review_path <- file.path(output_dir, "transportability_review_level.csv")

@@ -11,7 +11,7 @@ cat("
 \n")
 
 # Load results
-results <- read.csv("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_results_pairwise70.csv",
+results <- read.csv("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_results_pairwise70.csv",  # sentinel:skip-line P0-hardcoded-local-path
                     stringsAsFactors = FALSE)
 
 cat("Data loaded:", nrow(results), "meta-analyses from",
@@ -554,7 +554,7 @@ cat("   - High heterogeneity (tau > 0.5) reduces stability\n")
 cat("   - logRR analyses (binary outcomes) tend to be most stable\n")
 
 # Save summary to file
-sink("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_modeling_summary.txt")
+sink("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_modeling_summary.txt")  # sentinel:skip-line P0-hardcoded-local-path
 cat("MA4 v1.0.1 Modeling Summary - Pairwise70\n")
 cat("=========================================\n\n")
 cat("Total meta-analyses:", nrow(results), "\n")

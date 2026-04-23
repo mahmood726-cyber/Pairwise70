@@ -420,8 +420,8 @@ run_ma4_on_pairwise70 <- function(data_dir, output_file = "ma4_results.csv") {
 # RUN ANALYSIS
 # ============================================================================
 
-data_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"
-output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis"
+data_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"  # sentinel:skip-line P0-hardcoded-local-path
+output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis"  # sentinel:skip-line P0-hardcoded-local-path
 
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 

@@ -3,7 +3,7 @@
   "slug": "pairwise70-cochrane-dataset",
   "author": "Mahmood Ahmad",
   "date": "2026-03-26",
-  "path": "C:\\Models\\Pairwise70",
+  "path": "C:\\Projects\\Pairwise70",
   "type": "data",
   "primary_estimand": "Fragility index",
   "study_count": 501,

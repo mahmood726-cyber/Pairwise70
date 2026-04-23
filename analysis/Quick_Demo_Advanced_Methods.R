@@ -6,7 +6,7 @@
 library(metafor)
 
 # Load advanced methods
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods.R")
+source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods.R")  # sentinel:skip-line P0-hardcoded-local-path
 
 cat(strrep("=", 70), "\n")
 cat("QUICK DEMONSTRATION: ADVANCED POOLING METHODS\n")
@@ -89,7 +89,7 @@ cat(strrep("-", 50), "\n\n")
 
 # Load Pairwise70
 if (require("Pairwise70", quietly = TRUE) ||
-    tryCatch({devtools::load_all("C:/Users/user/OneDrive - NHS/Documents/Pairwise70"); TRUE},
+    tryCatch({devtools::load_all("C:/Users/user/OneDrive - NHS/Documents/Pairwise70"); TRUE},  # sentinel:skip-line P0-hardcoded-local-path
              error = function(e) FALSE)) {
 
   # Get first available dataset

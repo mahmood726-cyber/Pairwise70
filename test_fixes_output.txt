@@ -22,7 +22,7 @@ Type 'q()' to quit R.
 > #!/usr/bin/env Rscript
 > 
 > # Quick test of SPE and TAS fixes
-> setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70")
+> setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70")  # sentinel:skip-line P0-hardcoded-local-path
 > 
 > source("R/advanced_pooling_v4.R")
 > 

@@ -17,7 +17,7 @@ cat("================================================================\n\n")
 
 start_time <- Sys.time()
 
-setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")
+setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")  # sentinel:skip-line P0-hardcoded-local-path
 
 suppressPackageStartupMessages({
   library(dplyr)

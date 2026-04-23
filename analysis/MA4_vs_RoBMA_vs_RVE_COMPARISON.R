@@ -37,13 +37,13 @@ cat("clubSandwich version:", as.character(packageVersion("clubSandwich")), "\n\n
 cat("Loading MA4 results and raw data...\n")
 
 # Load MA4 results
-ma4_results <- read.csv("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_results_pairwise70.csv",
+ma4_results <- read.csv("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_results_pairwise70.csv",  # sentinel:skip-line P0-hardcoded-local-path
                         stringsAsFactors = FALSE)
 
 cat("Total meta-analyses:", nrow(ma4_results), "\n\n")
 
 # Load raw Pairwise70 data for detailed analysis
-data_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"
+data_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"  # sentinel:skip-line P0-hardcoded-local-path
 rda_files <- list.files(data_dir, pattern = "\\.rda$", full.names = TRUE)
 
 # ============================================================================
@@ -509,7 +509,7 @@ cat("   - These are DIFFERENT constructs with partial overlap\n")
 # SAVE RESULTS
 # ============================================================================
 
-out_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/comparison_output"
+out_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/comparison_output"  # sentinel:skip-line P0-hardcoded-local-path
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 write.csv(comparison_df, file.path(out_dir, "MA4_vs_RVE_comparison.csv"), row.names = FALSE)

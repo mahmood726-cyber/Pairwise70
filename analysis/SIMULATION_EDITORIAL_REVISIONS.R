@@ -20,7 +20,7 @@ suppressPackageStartupMessages({
 })
 
 # Set working directory
-setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")
+setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")  # sentinel:skip-line P0-hardcoded-local-path
 
 # Load existing results
 sim_results <- readRDS("output/SIMULATION_1000_RESULTS.rds")

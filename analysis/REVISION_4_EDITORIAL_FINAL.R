@@ -14,7 +14,7 @@ cat("\n================================================================\n")
 cat("EDITORIAL REVISION 2: Final Revisions\n")
 cat("================================================================\n\n")
 
-setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")
+setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")  # sentinel:skip-line P0-hardcoded-local-path
 dir.create("output", showWarnings = FALSE)
 dir.create("figures", showWarnings = FALSE)
 

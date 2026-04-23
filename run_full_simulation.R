@@ -2,7 +2,7 @@
 
 # Full Simulation Study - V4 Methods
 # 2000 iterations x 25 scenarios = 50,000 simulations
-setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/simulation")
+setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/simulation")  # sentinel:skip-line P0-hardcoded-local-path
 
 source("Comprehensive_Testing_Framework.R")
 

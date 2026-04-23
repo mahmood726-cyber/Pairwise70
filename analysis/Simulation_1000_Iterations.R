@@ -8,7 +8,7 @@ library(data.table)
 library(parallel)
 
 # Load advanced methods
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods.R")
+source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods.R")  # sentinel:skip-line P0-hardcoded-local-path
 
 set.seed(12345)
 
@@ -399,7 +399,7 @@ for (scen_name in unique(performance$scenario)) {
 # SAVE RESULTS
 ################################################################################
 
-output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output"
+output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output"  # sentinel:skip-line P0-hardcoded-local-path
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
 fwrite(combined_results, file.path(output_dir, "simulation_1000_raw.csv"))

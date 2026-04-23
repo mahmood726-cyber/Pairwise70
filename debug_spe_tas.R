@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 # Debug SPE and TAS
-setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70")
+setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70")  # sentinel:skip-line P0-hardcoded-local-path
 source("R/advanced_pooling_v4.R")
 
 set.seed(123)

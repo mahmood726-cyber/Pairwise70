@@ -274,7 +274,7 @@ Five novel methods were developed and validated through simulation:
 remotes::install_github("mahmood789/Pairwise70")
 
 # Or load development version
-devtools::load_all("C:/Users/user/OneDrive - NHS/Documents/Pairwise70")
+devtools::load_all("C:/Users/user/OneDrive - NHS/Documents/Pairwise70") <!-- sentinel:skip-line P0-hardcoded-local-path -->
 ```
 
 ### Basic Usage

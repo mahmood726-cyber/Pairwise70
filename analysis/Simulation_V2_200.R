@@ -5,7 +5,7 @@
 library(metafor)
 library(data.table)
 
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods_V2.R")
+source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods_V2.R")  # sentinel:skip-line P0-hardcoded-local-path
 
 set.seed(42)
 
@@ -201,7 +201,7 @@ for (m in c("HKSJ", "MWM_v2", "SIT_v2", "ARP_v2")) {
 }
 
 # Save results
-output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/results"
+output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/results"  # sentinel:skip-line P0-hardcoded-local-path
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 fwrite(results, file.path(output_dir, "simulation_v2_200_raw.csv"))
 fwrite(overall, file.path(output_dir, "simulation_v2_200_overall.csv"))

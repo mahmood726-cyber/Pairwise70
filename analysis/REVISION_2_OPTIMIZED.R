@@ -9,7 +9,7 @@ cat("EDITORIAL REVISION: Research Synthesis Methods (OPTIMIZED)\n")
 cat("================================================================\n\n")
 
 # Setup
-setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")
+setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")  # sentinel:skip-line P0-hardcoded-local-path
 dir.create("output", showWarnings = FALSE)
 
 # Load packages

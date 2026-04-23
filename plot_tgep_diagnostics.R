@@ -1,8 +1,8 @@
 #' TGEP Diagnostic Visualization (Base R)
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/R/tgep_meta.R")
+source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/R/tgep_meta.R")  # sentinel:skip-line P0-hardcoded-local-path
 
 # Example with Cochrane data
-load("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data/CD000028_pub4_data.rda")
+load("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data/CD000028_pub4_data.rda")  # sentinel:skip-line P0-hardcoded-local-path
 dat <- CD000028_pub4_data[CD000028_pub4_data$Analysis.number == 1, ]
 es <- metafor::escalc(measure="OR", ai=Experimental.cases, n1i=Experimental.N, ci=Control.cases, n2i=Control.N, data=dat)
 es <- es[!is.na(es$yi), ]

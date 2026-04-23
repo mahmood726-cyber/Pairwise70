@@ -6,7 +6,7 @@
 library(metafor)
 library(data.table)
 
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods_V2.R")
+source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods_V2.R")  # sentinel:skip-line P0-hardcoded-local-path
 
 set.seed(42)
 

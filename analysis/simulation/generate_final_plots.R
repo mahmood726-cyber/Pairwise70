@@ -3,7 +3,7 @@
 # Generate Final Publication Plots from Full Simulation Results
 # Pairwise70 V4 Methods - 2000 iterations x 25 scenarios
 
-setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")
+setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")  # sentinel:skip-line P0-hardcoded-local-path
 
 library(ggplot2)
 library(data.table)

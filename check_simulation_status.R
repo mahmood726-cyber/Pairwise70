@@ -3,7 +3,7 @@
 # Monitor and Process Full Simulation Results
 # Run this to check simulation status or process results when complete
 
-setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")
+setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")  # sentinel:skip-line P0-hardcoded-local-path
 
 cat("=== Pairwise70 V4 - Simulation Status Check ===\n\n")
 

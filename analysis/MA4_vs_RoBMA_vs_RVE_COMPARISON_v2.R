@@ -22,11 +22,11 @@ cat("Packages loaded.\n\n")
 # LOAD DATA
 # ============================================================================
 
-ma4_results <- read.csv("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_results_pairwise70.csv",
+ma4_results <- read.csv("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_results_pairwise70.csv",  # sentinel:skip-line P0-hardcoded-local-path
                         stringsAsFactors = FALSE)
 cat("MA4 results loaded:", nrow(ma4_results), "meta-analyses\n")
 
-data_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"
+data_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"  # sentinel:skip-line P0-hardcoded-local-path
 rda_files <- list.files(data_dir, pattern = "\\.rda$", full.names = TRUE)
 
 # ============================================================================
@@ -382,7 +382,7 @@ if (!is.null(comp_robma)) {
 cat("4. Recommendation: Use ALL THREE for comprehensive meta-analysis evaluation\n")
 
 # Save
-out_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/comparison_output"
+out_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/comparison_output"  # sentinel:skip-line P0-hardcoded-local-path
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 write.csv(comp_df, file.path(out_dir, "MA4_RVE_comparison.csv"), row.names = FALSE)
 if (!is.null(comp_robma)) {

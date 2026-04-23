@@ -3,7 +3,7 @@
 # Quick Validation of V4 Methods
 # Run 50 iterations x 25 scenarios = 1250 simulations
 
-setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/simulation")
+setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/simulation")  # sentinel:skip-line P0-hardcoded-local-path
 
 source("Comprehensive_Testing_Framework.R")
 

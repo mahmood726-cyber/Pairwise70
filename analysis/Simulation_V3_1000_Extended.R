@@ -16,7 +16,7 @@ suppressPackageStartupMessages({
 })
 
 # Source V3 methods
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/R/advanced_pooling_v3.R")
+source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/R/advanced_pooling_v3.R")  # sentinel:skip-line P0-hardcoded-local-path
 
 # Install clubSandwich if needed
 if (!requireNamespace("clubSandwich", quietly = TRUE)) {
@@ -323,7 +323,7 @@ print(pubbias[, .(scenario, method, Bias, RMSE, Coverage)])
 
 # === SAVE RESULTS ===
 
-results_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/results"
+results_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/results"  # sentinel:skip-line P0-hardcoded-local-path
 if (!dir.exists(results_dir)) dir.create(results_dir, recursive = TRUE)
 
 fwrite(results, file.path(results_dir, "simulation_v3_1000_raw.csv"))

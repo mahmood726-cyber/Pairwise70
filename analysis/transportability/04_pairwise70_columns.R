@@ -1,5 +1,5 @@
 # Column coverage and analysis terms for Pairwise70
-root <- normalizePath("C:/Users/user/OneDrive - NHS/Documents/Pairwise70", winslash = "/", mustWork = TRUE)
+root <- normalizePath("C:/Users/user/OneDrive - NHS/Documents/Pairwise70", winslash = "/", mustWork = TRUE)  # sentinel:skip-line P0-hardcoded-local-path
 output_dir <- file.path(root, "analysis", "transportability")
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 

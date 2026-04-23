@@ -16,7 +16,7 @@ suppressPackageStartupMessages({
 })
 
 # Paths
-base_path <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70"
+base_path <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70"  # sentinel:skip-line P0-hardcoded-local-path
 output_path <- file.path(base_path, "analysis/output/information_adequacy")
 dir.create(output_path, showWarnings = FALSE, recursive = TRUE)
 

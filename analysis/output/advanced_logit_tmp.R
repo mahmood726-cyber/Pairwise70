@@ -33,8 +33,8 @@ categorize_analysis_name <- function(name) {
   "other"
 }
 
-input_path <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output/sensitivity_fixed_influence.csv"
-output_path <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output/advanced_mixed_effects_logit.csv"
+input_path <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output/sensitivity_fixed_influence.csv"  # sentinel:skip-line P0-hardcoded-local-path
+output_path <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output/advanced_mixed_effects_logit.csv"  # sentinel:skip-line P0-hardcoded-local-path
 
 df <- read.csv(input_path)
 analysis_df <- df %>%

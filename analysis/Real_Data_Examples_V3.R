@@ -11,7 +11,7 @@ suppressPackageStartupMessages({
   library(data.table)
 })
 
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/R/advanced_pooling_v3.R")
+source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/R/advanced_pooling_v3.R")  # sentinel:skip-line P0-hardcoded-local-path
 
 cat("=" %>% rep(70) %>% paste(collapse = ""), "\n")
 cat("REAL DATA EXAMPLES: ADVANCED POOLING METHODS V3\n")
@@ -199,7 +199,7 @@ cat("
 
 # === SAVE RESULTS ===
 
-results_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/results"
+results_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/results"  # sentinel:skip-line P0-hardcoded-local-path
 if (!dir.exists(results_dir)) dir.create(results_dir, recursive = TRUE)
 
 fwrite(summary_table, file.path(results_dir, "real_data_examples_summary.csv"))

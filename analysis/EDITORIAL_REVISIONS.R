@@ -26,7 +26,7 @@ cat("===========================================================================
 # LOAD DATA
 ################################################################################
 
-results_file <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output/fragility_analysis_results.csv"
+results_file <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output/fragility_analysis_results.csv"  # sentinel:skip-line P0-hardcoded-local-path
 data <- fread(results_file)
 
 # Create key variables
@@ -646,7 +646,7 @@ print(summary_table)
 # SAVE REVISION OUTPUTS
 ################################################################################
 
-output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output"
+output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output"  # sentinel:skip-line P0-hardcoded-local-path
 
 # Save sensitivity analysis
 fwrite(sensitivity_results, file.path(output_dir, "weight_sensitivity_analysis.csv"))

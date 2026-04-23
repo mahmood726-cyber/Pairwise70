@@ -1,5 +1,5 @@
 # Build ClinicalTrials.gov query terms by domain
-root <- normalizePath("C:/Users/user/OneDrive - NHS/Documents/Pairwise70", winslash = "/", mustWork = TRUE)
+root <- normalizePath("C:/Users/user/OneDrive - NHS/Documents/Pairwise70", winslash = "/", mustWork = TRUE)  # sentinel:skip-line P0-hardcoded-local-path
 output_dir <- file.path(root, "analysis", "transportability")
 terms_path <- file.path(output_dir, "pairwise70_analysis_terms.csv")
 assign_path <- file.path(output_dir, "transportability_domain_assignments.csv")

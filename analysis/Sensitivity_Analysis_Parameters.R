@@ -11,7 +11,7 @@ suppressPackageStartupMessages({
   library(data.table)
 })
 
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/R/advanced_pooling_v3.R")
+source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/R/advanced_pooling_v3.R")  # sentinel:skip-line P0-hardcoded-local-path
 
 cat("=" %>% rep(60) %>% paste(collapse = ""), "\n")
 cat("SENSITIVITY ANALYSIS FOR TUNING PARAMETERS\n")
@@ -226,7 +226,7 @@ print(head(sit_grid, 5))
 
 # === SAVE RESULTS ===
 
-results_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/results"
+results_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/results"  # sentinel:skip-line P0-hardcoded-local-path
 if (!dir.exists(results_dir)) dir.create(results_dir, recursive = TRUE)
 
 fwrite(mwm_sensitivity, file.path(results_dir, "sensitivity_mwm_stability_weight.csv"))

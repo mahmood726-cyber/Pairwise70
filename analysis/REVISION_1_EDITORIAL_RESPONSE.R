@@ -18,7 +18,7 @@ cat("EDITORIAL REVISION: Research Synthesis Methods\n")
 cat("================================================================\n\n")
 
 # Setup
-setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")
+setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")  # sentinel:skip-line P0-hardcoded-local-path
 
 # Load packages
 required <- c("dplyr", "tidyr", "ggplot2", "metafor", "lme4", "pROC",

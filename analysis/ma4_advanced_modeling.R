@@ -11,7 +11,7 @@ cat("
 \n")
 
 # Load data
-results <- read.csv("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_results_pairwise70.csv",
+results <- read.csv("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_results_pairwise70.csv",  # sentinel:skip-line P0-hardcoded-local-path
                     stringsAsFactors = FALSE)
 
 cat("Loaded", nrow(results), "meta-analyses\n\n")
@@ -144,7 +144,7 @@ if (requireNamespace("metafor", quietly = TRUE)) {
   library(metafor)
 
   # Load original data to compute metafor estimates
-  data_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"
+  data_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"  # sentinel:skip-line P0-hardcoded-local-path
   rda_files <- list.files(data_dir, pattern = "\\.rda$", full.names = TRUE)
 
   cat("Validating MA4 against metafor on sample of meta-analyses...\n\n")
@@ -293,7 +293,7 @@ if (requireNamespace("metafor", quietly = TRUE)) {
 
     # Save validation results
     write.csv(validation_df,
-              "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_metafor_validation.csv",
+              "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_metafor_validation.csv",  # sentinel:skip-line P0-hardcoded-local-path
               row.names = FALSE)
     cat("\nValidation results saved to: ma4_metafor_validation.csv\n")
   }

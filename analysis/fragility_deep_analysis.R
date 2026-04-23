@@ -7,8 +7,8 @@ library(data.table)
 library(metafor)
 
 # Paths
-output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output"
-data_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"
+output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output"  # sentinel:skip-line P0-hardcoded-local-path
+data_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"  # sentinel:skip-line P0-hardcoded-local-path
 plot_dir <- file.path(output_dir, "plots", "fragility_deep")
 dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
 

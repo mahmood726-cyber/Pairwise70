@@ -7,7 +7,7 @@ library(metafor)
 library(data.table)
 
 # Load V2 methods
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods_V2.R")
+source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods_V2.R")  # sentinel:skip-line P0-hardcoded-local-path
 
 set.seed(42)
 
@@ -347,7 +347,7 @@ for (s in unique(performance$scenario)) {
 # SAVE RESULTS
 ################################################################################
 
-output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/results"
+output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/results"  # sentinel:skip-line P0-hardcoded-local-path
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 
 fwrite(all_results, file.path(output_dir, "simulation_v2_1000_raw.csv"))

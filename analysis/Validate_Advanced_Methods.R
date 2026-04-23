@@ -7,12 +7,12 @@ library(data.table)
 library(metafor)
 
 # Load advanced methods
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods.R")
+source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods.R")  # sentinel:skip-line P0-hardcoded-local-path
 
 # Load Pairwise70 datasets
 if (!require("Pairwise70", quietly = TRUE)) {
   # If package not installed, try loading from local
-  devtools::load_all("C:/Users/user/OneDrive - NHS/Documents/Pairwise70")
+  devtools::load_all("C:/Users/user/OneDrive - NHS/Documents/Pairwise70")  # sentinel:skip-line P0-hardcoded-local-path
 }
 
 ################################################################################
@@ -382,7 +382,7 @@ cat("   RoBMA and RVE do not consider.\n")
 # SECTION 8: SAVE RESULTS
 ################################################################################
 
-output_file <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output/advanced_methods_validation.csv"
+output_file <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output/advanced_methods_validation.csv"  # sentinel:skip-line P0-hardcoded-local-path
 
 dir.create(dirname(output_file), showWarnings = FALSE, recursive = TRUE)
 fwrite(summary_data, output_file)

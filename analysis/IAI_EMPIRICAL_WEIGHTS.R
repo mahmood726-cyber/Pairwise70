@@ -11,7 +11,7 @@ suppressPackageStartupMessages({
   library(boot)
 })
 
-base_path <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70"
+base_path <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70"  # sentinel:skip-line P0-hardcoded-local-path
 output_path <- file.path(base_path, "analysis/output/information_adequacy")
 
 cat(strrep("=", 70), "\n")

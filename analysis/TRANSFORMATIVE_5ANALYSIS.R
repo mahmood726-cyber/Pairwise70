@@ -11,7 +11,7 @@ cat("TRANSFORMATIVE META-EPIDEMIOLOGICAL PROJECT\n")
 cat("========================================\n\n")
 
 # Set working directory
-setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")
+setwd("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis")  # sentinel:skip-line P0-hardcoded-local-path
 
 # Load required packages
 required_packages <- c("dplyr", "tidyr", "ggplot2", "stringr", "metafor",

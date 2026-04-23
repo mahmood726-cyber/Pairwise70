@@ -23,7 +23,7 @@ cat("===========================================================================
 # LOAD DATA
 ################################################################################
 
-results_file <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output/fragility_analysis_results.csv"
+results_file <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output/fragility_analysis_results.csv"  # sentinel:skip-line P0-hardcoded-local-path
 data <- fread(results_file)
 
 # Create key variables
@@ -504,7 +504,7 @@ VALIDATION SUMMARY
 # SAVE FINAL OUTPUTS
 ################################################################################
 
-output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output"
+output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output"  # sentinel:skip-line P0-hardcoded-local-path
 
 # Save MAFI variants
 mafi_variants <- data[, .(

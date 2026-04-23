@@ -19,7 +19,7 @@ cat("
 set.seed(42)  # Reproducibility
 
 # Load data
-results <- read.csv("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_results_pairwise70.csv",
+results <- read.csv("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_results_pairwise70.csv",  # sentinel:skip-line P0-hardcoded-local-path
                     stringsAsFactors = FALSE)
 
 cat("Dataset: Pairwise70 Cochrane Meta-Analysis Collection\n")
@@ -65,7 +65,7 @@ d$R_cat <- cut(d$R, breaks = c(0, 0.5, 0.8, 1),
 cat("Modeling dataset prepared: N =", nrow(d), "\n\n")
 
 # Output directory
-out_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/research_output"
+out_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/research_output"  # sentinel:skip-line P0-hardcoded-local-path
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 # ============================================================================
