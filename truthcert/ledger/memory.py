@@ -119,8 +119,9 @@ class FailureMemory:
         self.pattern_count[signature] = self.pattern_count.get(signature, 0) + 1
 
         # Check if pattern already exists
+        import hmac
         for pattern in self.similarity_search.patterns:
-            if pattern.signature == signature:
+            if hmac.compare_digest(pattern.signature, signature):
                 pattern.count = self.pattern_count[signature]
                 pattern.source_contexts.append(source_context)
                 pattern.correction_hints.append(correction_hint)
