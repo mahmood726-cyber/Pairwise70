@@ -471,6 +471,234 @@ rbm_meta <- function(yi, vi, max_iterations = 25, convergence_tol = 1e-6,
 # CATEGORY B: BIAS CORRECTION METHODS
 # ============================================================================
 
+#' PBM - Publication Bias Master Model
+#'
+#' High-performance publication-bias correction by combining complementary
+#' estimators (PET-PEESE, trim-and-fill, SWA, TAS, HKSJ, REML) with adaptive
+#' weights driven by asymmetry diagnostics.
+#'
+#' @param yi Numeric vector of effect sizes
+#' @param vi Numeric vector of sampling variances
+#' @param include_methods Character vector of methods to consider
+#' @param alpha_asymmetry Significance threshold for asymmetry diagnostics (default 0.10)
+#' @param n_boot_swa Number of bootstrap iterations for SWA (default 499)
+#' @param swa_result Optional precomputed SWA result list (for benchmarking speed)
+#' @param tas_result Optional precomputed TAS result list (for benchmarking speed)
+#' @return List with estimate, se, ci_lb, ci_ub, diagnostics, and model weights
+#' @export
+pbm_meta <- function(yi, vi,
+                     include_methods = c("PETPEESE", "TF", "SWA", "TAS", "HKSJ", "REML"),
+                     alpha_asymmetry = 0.10,
+                     n_boot_swa = 499,
+                     swa_result = NULL,
+                     tas_result = NULL) {
+  k <- length(yi)
+
+  if (k != length(vi)) stop("yi and vi must have the same length")
+  if (k < 3) stop("PBM requires at least 3 studies")
+  if (any(!is.finite(yi)) || any(!is.finite(vi))) stop("yi and vi must be finite")
+  if (any(vi <= 0)) stop("All variances in vi must be > 0")
+
+  # Base models
+  fit_reml <- metafor::rma(yi, vi, method = "REML")
+  fit_hksj <- metafor::rma(yi, vi, method = "REML", test = "knha")
+
+  # Asymmetry diagnostics
+  egger <- tryCatch(
+    metafor::regtest(fit_reml, model = "rma"),
+    error = function(e) NULL
+  )
+  egger_p <- if (!is.null(egger) && "pval" %in% names(egger)) egger$pval else NA_real_
+  asymmetry_detected <- !is.na(egger_p) && (egger_p < alpha_asymmetry)
+
+  # PET-PEESE (meta-regression based)
+  sei <- sqrt(vi)
+  pet_fit <- tryCatch(
+    metafor::rma(yi, vi, mods = ~ sei, method = "REML", test = "knha"),
+    error = function(e) NULL
+  )
+  peese_fit <- tryCatch(
+    metafor::rma(yi, vi, mods = ~ vi, method = "REML", test = "knha"),
+    error = function(e) NULL
+  )
+
+  pet_ok <- !is.null(pet_fit) && length(coef(pet_fit)) >= 1 && is.finite(pet_fit$se[1]) && pet_fit$se[1] > 0
+  peese_ok <- !is.null(peese_fit) && length(coef(peese_fit)) >= 1 && is.finite(peese_fit$se[1]) && peese_fit$se[1] > 0
+  pet_p_intercept <- if (pet_ok) pet_fit$pval[1] else NA_real_
+
+  if (pet_ok && peese_ok) {
+    use_peese <- !is.na(pet_p_intercept) && (pet_p_intercept < 0.10)
+    petpeese_estimate <- if (use_peese) as.numeric(coef(peese_fit)[1]) else as.numeric(coef(pet_fit)[1])
+    petpeese_se <- if (use_peese) peese_fit$se[1] else pet_fit$se[1]
+    petpeese_label <- if (use_peese) "PEESE" else "PET"
+  } else if (pet_ok) {
+    petpeese_estimate <- as.numeric(coef(pet_fit)[1])
+    petpeese_se <- pet_fit$se[1]
+    petpeese_label <- "PET"
+  } else if (peese_ok) {
+    petpeese_estimate <- as.numeric(coef(peese_fit)[1])
+    petpeese_se <- peese_fit$se[1]
+    petpeese_label <- "PEESE"
+  } else {
+    petpeese_estimate <- NA_real_
+    petpeese_se <- NA_real_
+    petpeese_label <- "unavailable"
+  }
+
+  # Trim-and-fill estimate
+  tf_fit <- tryCatch(
+    metafor::trimfill(fit_reml),
+    error = function(e) NULL
+  )
+  tf_estimate <- if (!is.null(tf_fit)) as.numeric(coef(tf_fit)) else NA_real_
+  tf_se <- if (!is.null(tf_fit) && is.finite(tf_fit$se) && tf_fit$se > 0) tf_fit$se else NA_real_
+  tf_n_imputed <- if (!is.null(tf_fit) && "fill" %in% names(tf_fit) && !is.null(tf_fit$fill)) tf_fit$k - k else 0
+
+  # SWA / TAS estimates (available for larger k)
+  is_valid_component <- function(x, expected_method) {
+    !is.null(x) &&
+      is.list(x) &&
+      "method" %in% names(x) &&
+      identical(x$method, expected_method) &&
+      "estimate" %in% names(x) &&
+      "se" %in% names(x) &&
+      is.finite(x$estimate) &&
+      is.finite(x$se) &&
+      x$se > 0
+  }
+
+  swa_res <- if ("SWA" %in% include_methods && k >= 10) {
+    if (is_valid_component(swa_result, "SWA")) {
+      swa_result
+    } else {
+      tryCatch(swa_meta(yi, vi, n_boot = n_boot_swa), error = function(e) NULL)
+    }
+  } else {
+    NULL
+  }
+  tas_res <- if ("TAS" %in% include_methods && k >= 10) {
+    if (is_valid_component(tas_result, "TAS")) {
+      tas_result
+    } else {
+      tryCatch(tas_meta(yi, vi), error = function(e) NULL)
+    }
+  } else {
+    NULL
+  }
+
+  # Candidate model table
+  method_table <- data.frame(
+    method = character(0),
+    estimate = numeric(0),
+    se = numeric(0),
+    bias_sensitive = numeric(0),
+    stringsAsFactors = FALSE
+  )
+
+  add_method <- function(tbl, name, estimate, se, bias_sensitive) {
+    if (!is.na(estimate) && !is.na(se) && is.finite(estimate) && is.finite(se) && se > 0) {
+      rbind(tbl, data.frame(
+        method = name,
+        estimate = estimate,
+        se = se,
+        bias_sensitive = bias_sensitive,
+        stringsAsFactors = FALSE
+      ))
+    } else {
+      tbl
+    }
+  }
+
+  if ("REML" %in% include_methods) {
+    method_table <- add_method(method_table, "REML", as.numeric(coef(fit_reml)), fit_reml$se, 0.2)
+  }
+  if ("HKSJ" %in% include_methods) {
+    method_table <- add_method(method_table, "HKSJ", as.numeric(coef(fit_hksj)), fit_hksj$se, 0.25)
+  }
+  if ("PETPEESE" %in% include_methods) {
+    method_table <- add_method(method_table, "PETPEESE", petpeese_estimate, petpeese_se, 1.0)
+  }
+  if ("TF" %in% include_methods) {
+    method_table <- add_method(method_table, "TF", tf_estimate, tf_se, 0.9)
+  }
+  if (!is.null(swa_res) && identical(swa_res$method, "SWA")) {
+    method_table <- add_method(method_table, "SWA", swa_res$estimate, swa_res$se, 1.1)
+  }
+  if (!is.null(tas_res) && identical(tas_res$method, "TAS")) {
+    method_table <- add_method(method_table, "TAS", tas_res$estimate, tas_res$se, 0.85)
+  }
+
+  if (nrow(method_table) < 2) {
+    warning("Not enough valid PBM component methods; returning HKSJ.")
+    return(list(
+      estimate = as.numeric(coef(fit_hksj)),
+      se = fit_hksj$se,
+      ci_lb = fit_hksj$ci.lb,
+      ci_ub = fit_hksj$ci.ub,
+      pvalue = fit_hksj$pval,
+      tau2 = fit_hksj$tau2,
+      method = "PBM_fallback_HKSJ",
+      k = k
+    ))
+  }
+
+  # Adaptive weights: precision x asymmetry-informed method sensitivity
+  se_floor <- pmax(method_table$se, 1e-6)
+  base_w <- 1 / (se_floor^2)
+  if (asymmetry_detected) {
+    sensitivity_boost <- 0.6 + method_table$bias_sensitive
+  } else {
+    sensitivity_boost <- 1.8 - method_table$bias_sensitive
+    sensitivity_boost <- pmax(0.4, sensitivity_boost)
+  }
+  w <- base_w * sensitivity_boost
+  # Guard against single-method dominance from extreme SE differences
+  w <- pmin(w, 1000 * median(w, na.rm = TRUE))
+  w <- pmax(w, 1e-10)
+  w <- w / sum(w)
+
+  # Weighted ensemble with between-model disagreement inflation
+  estimate <- sum(w * method_table$estimate)
+  within_var <- sum(w * (method_table$se^2))
+  between_var <- sum(w * (method_table$estimate - estimate)^2)
+  total_var <- within_var + (1 + 1 / nrow(method_table)) * between_var
+  se <- sqrt(total_var)
+
+  df <- max(1, k - 2)
+  t_crit <- qt(0.975, df)
+  ci_lb <- estimate - t_crit * se
+  ci_ub <- estimate + t_crit * se
+  pvalue <- 2 * (1 - pt(abs(estimate / se), df))
+
+  # Bias severity index relative to REML
+  reml_est <- as.numeric(coef(fit_reml))
+  reml_se <- fit_reml$se
+  bias_shift <- estimate - reml_est
+  bias_severity_index <- abs(bias_shift) / (reml_se + 1e-10)
+
+  list(
+    estimate = estimate,
+    se = se,
+    ci_lb = ci_lb,
+    ci_ub = ci_ub,
+    pvalue = pvalue,
+    tau2 = fit_reml$tau2,
+    method = "PBM",
+    k = k,
+    asymmetry_detected = asymmetry_detected,
+    egger_p = egger_p,
+    pet_intercept_p = pet_p_intercept,
+    petpeese_mode = petpeese_label,
+    component_methods = method_table$method,
+    tf_n_imputed = tf_n_imputed,
+    bias_shift_vs_reml = bias_shift,
+    bias_severity_index = bias_severity_index,
+    component_estimates = stats::setNames(method_table$estimate, method_table$method),
+    component_ses = stats::setNames(method_table$se, method_table$method),
+    ensemble_weights = stats::setNames(w, method_table$method)
+  )
+}
+
 #' SWA - Selection-Weight Adjustment
 #'
 #' Models publication bias directly using weight-function models.
@@ -1363,15 +1591,15 @@ compare_methods_v4 <- function(yi, vi) {
   results$REML <- data.frame(
     Method = "REML", Estimate = round(as.numeric(coef(fit_reml)), 4),
     SE = round(fit_reml$se, 4), CI_Lower = round(fit_reml$ci.lb, 4),
-    CI_Upper = round(fit_reml->ci.ub, 4), PValue = round(fit_reml$pval, 4),
+    CI_Upper = round(fit_reml$ci.ub, 4), PValue = round(fit_reml$pval, 4),
     k = k
   )
 
   fit_hksj <- metafor::rma(yi, vi, method = "REML", test = "knha")
   results$HKSJ <- data.frame(
     Method = "HKSJ", Estimate = round(as.numeric(coef(fit_hksj)), 4),
-    SE = round(fit_hksj$se, 4), CI_Lower = round(fit_hksj->ci.lb, 4),
-    CI_Upper = round(fit_hksj->ci.ub, 4), PValue = round(fit_hksj$pval, 4),
+    SE = round(fit_hksj$se, 4), CI_Lower = round(fit_hksj$ci.lb, 4),
+    CI_Upper = round(fit_hksj$ci.ub, 4), PValue = round(fit_hksj$pval, 4),
     k = k
   )
 
@@ -1425,6 +1653,19 @@ compare_methods_v4 <- function(yi, vi) {
       Estimate = round(tas$estimate, 4),
       SE = round(tas$se, 4), CI_Lower = round(tas$ci_lb, 4),
       CI_Upper = round(tas$ci_ub, 4), PValue = round(tas$pvalue, 4),
+      k = k
+    )
+  }
+
+  pbm <- tryCatch(
+    pbm_meta(yi, vi, swa_result = swa, tas_result = tas),
+    error = function(e) NULL
+  )
+  if (!is.null(pbm)) {
+    results$PBM <- data.frame(
+      Method = "PBM", Estimate = round(pbm$estimate, 4),
+      SE = round(pbm$se, 4), CI_Lower = round(pbm$ci_lb, 4),
+      CI_Upper = round(pbm$ci_ub, 4), PValue = round(pbm$pvalue, 4),
       k = k
     )
   }

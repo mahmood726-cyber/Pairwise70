@@ -59,6 +59,39 @@ summary(meta_result)
 forest(meta_result)
 ```
 
+## Publication Bias Master Model (PBM)
+
+`Pairwise70` includes `pbm_meta()`, an adaptive publication-bias ensemble that combines:
+- PET-PEESE
+- trim-and-fill
+- SWA
+- TAS
+- HKSJ / REML baselines
+
+```r
+library(Pairwise70)
+library(metafor)
+
+data(CD002042_pub6_data)
+
+es <- escalc(
+  measure = "OR",
+  ai = Experimental.cases,
+  n1i = Experimental.N,
+  ci = Control.cases,
+  n2i = Control.N,
+  data = CD002042_pub6_data
+)
+
+pbm <- pbm_meta(es$yi, es$vi)
+pbm$estimate
+pbm$ci_lb
+pbm$ci_ub
+pbm$ensemble_weights
+pbm$asymmetry_detected
+pbm$egger_p
+```
+
 ## Dataset Structure
 
 Each dataset contains standardized columns:

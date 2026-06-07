@@ -1,0 +1,4 @@
+dataset,method,reason
+CD001072_pub2_data,CPC,non_finite_estimate
+CD001072_pub2_data,HGAM,non_finite_estimate
+CD001072_pub2_data,MTLE,non_finite_estimate

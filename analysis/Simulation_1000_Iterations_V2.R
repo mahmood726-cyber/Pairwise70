@@ -6,8 +6,31 @@
 library(metafor)
 library(data.table)
 
-# Load V2 methods
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/Advanced_Pooling_Methods_V2.R")  # sentinel:skip-line P0-hardcoded-local-path
+# Resolve repo root and load V2 methods
+args_full <- commandArgs(trailingOnly = FALSE)
+file_arg_idx <- grep("^--file=", args_full)
+script_path <- if (length(file_arg_idx) > 0) sub("^--file=", "", args_full[file_arg_idx[1]]) else ""
+script_dir <- if (nzchar(script_path)) {
+  normalizePath(dirname(script_path), winslash = "/", mustWork = FALSE)
+} else {
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+}
+candidate_roots <- unique(c(
+  script_dir,
+  normalizePath(file.path(script_dir, ".."), winslash = "/", mustWork = FALSE),
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE),
+  normalizePath(file.path(getwd(), ".."), winslash = "/", mustWork = FALSE)
+))
+repo_root <- candidate_roots[which(vapply(
+  candidate_roots,
+  function(p) file.exists(file.path(p, "DESCRIPTION")) && dir.exists(file.path(p, "analysis")),
+  logical(1)
+))[1]]
+if (is.na(repo_root) || !nzchar(repo_root)) {
+  stop("Could not locate repo root (expected DESCRIPTION and analysis/).")
+}
+
+source(file.path(repo_root, "analysis", "Advanced_Pooling_Methods_V2.R"))
 
 set.seed(42)
 
@@ -347,7 +370,7 @@ for (s in unique(performance$scenario)) {
 # SAVE RESULTS
 ################################################################################
 
-output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/results"  # sentinel:skip-line P0-hardcoded-local-path
+output_dir <- file.path(repo_root, "analysis", "results")
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 
 fwrite(all_results, file.path(output_dir, "simulation_v2_1000_raw.csv"))

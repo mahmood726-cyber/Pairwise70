@@ -3,6 +3,30 @@
 # Beta regression, Quantile regression, Validation against metafor
 # ============================================================================
 
+# Resolve repo root for portable paths
+args_full <- commandArgs(trailingOnly = FALSE)
+file_arg_idx <- grep("^--file=", args_full)
+script_path <- if (length(file_arg_idx) > 0) sub("^--file=", "", args_full[file_arg_idx[1]]) else ""
+script_dir <- if (nzchar(script_path)) {
+  normalizePath(dirname(script_path), winslash = "/", mustWork = FALSE)
+} else {
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+}
+candidate_roots <- unique(c(
+  script_dir,
+  normalizePath(file.path(script_dir, ".."), winslash = "/", mustWork = FALSE),
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE),
+  normalizePath(file.path(getwd(), ".."), winslash = "/", mustWork = FALSE)
+))
+repo_root <- candidate_roots[which(vapply(
+  candidate_roots,
+  function(p) file.exists(file.path(p, "DESCRIPTION")) && dir.exists(file.path(p, "analysis")),
+  logical(1)
+))[1]]
+if (is.na(repo_root) || !nzchar(repo_root)) {
+  stop("Could not locate repo root (expected DESCRIPTION and analysis/).")
+}
+
 cat("
 ================================================================================
    MA4 v1.0.1 ADVANCED STATISTICAL MODELING
@@ -11,7 +35,7 @@ cat("
 \n")
 
 # Load data
-results <- read.csv("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_results_pairwise70.csv",  # sentinel:skip-line P0-hardcoded-local-path
+results <- read.csv(file.path(repo_root, "analysis", "ma4_results_pairwise70.csv"),
                     stringsAsFactors = FALSE)
 
 cat("Loaded", nrow(results), "meta-analyses\n\n")
@@ -144,7 +168,7 @@ if (requireNamespace("metafor", quietly = TRUE)) {
   library(metafor)
 
   # Load original data to compute metafor estimates
-  data_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"  # sentinel:skip-line P0-hardcoded-local-path
+  data_dir <- file.path(repo_root, "data")
   rda_files <- list.files(data_dir, pattern = "\\.rda$", full.names = TRUE)
 
   cat("Validating MA4 against metafor on sample of meta-analyses...\n\n")
@@ -293,7 +317,7 @@ if (requireNamespace("metafor", quietly = TRUE)) {
 
     # Save validation results
     write.csv(validation_df,
-              "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/ma4_metafor_validation.csv",  # sentinel:skip-line P0-hardcoded-local-path
+              file.path(repo_root, "analysis", "ma4_metafor_validation.csv"),
               row.names = FALSE)
     cat("\nValidation results saved to: ma4_metafor_validation.csv\n")
   }

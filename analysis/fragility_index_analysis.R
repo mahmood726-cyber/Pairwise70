@@ -20,8 +20,30 @@ library(data.table)
 
 # Configuration
 args <- commandArgs(trailingOnly = TRUE)
-data_dir <- if(length(args) >= 1) args[1] else "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"  # sentinel:skip-line P0-hardcoded-local-path
-output_dir <- if(length(args) >= 2) args[2] else "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/output"  # sentinel:skip-line P0-hardcoded-local-path
+args_full <- commandArgs(trailingOnly = FALSE)
+file_arg_idx <- grep("^--file=", args_full)
+script_path <- if (length(file_arg_idx) > 0) sub("^--file=", "", args_full[file_arg_idx[1]]) else ""
+script_dir <- if (nzchar(script_path)) {
+  normalizePath(dirname(script_path), winslash = "/", mustWork = FALSE)
+} else {
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+}
+candidate_roots <- unique(c(
+  script_dir,
+  normalizePath(file.path(script_dir, ".."), winslash = "/", mustWork = FALSE),
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE),
+  normalizePath(file.path(getwd(), ".."), winslash = "/", mustWork = FALSE)
+))
+repo_root <- candidate_roots[which(vapply(
+  candidate_roots,
+  function(p) file.exists(file.path(p, "DESCRIPTION")) && dir.exists(file.path(p, "analysis")),
+  logical(1)
+))[1]]
+if (is.na(repo_root) || !nzchar(repo_root)) {
+  stop("Could not locate repo root (expected DESCRIPTION and analysis/).")
+}
+data_dir <- if(length(args) >= 1) args[1] else file.path(repo_root, "data")
+output_dir <- if(length(args) >= 2) args[2] else file.path(repo_root, "analysis", "output")
 
 # Clinical thresholds for OR/RR (log scale)
 CLINICAL_THRESHOLD_OR <- log(1.25)  # 25% change considered clinically meaningful

@@ -1,6 +1,30 @@
 # MA4 v1.0.1 Analysis for Pairwise70 Dataset Collection
 # Runs MA4 on all 501 Cochrane review datasets
 
+# Resolve repo root for portable paths
+args_full <- commandArgs(trailingOnly = FALSE)
+file_arg_idx <- grep("^--file=", args_full)
+script_path <- if (length(file_arg_idx) > 0) sub("^--file=", "", args_full[file_arg_idx[1]]) else ""
+script_dir <- if (nzchar(script_path)) {
+  normalizePath(dirname(script_path), winslash = "/", mustWork = FALSE)
+} else {
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+}
+candidate_roots <- unique(c(
+  script_dir,
+  normalizePath(file.path(script_dir, ".."), winslash = "/", mustWork = FALSE),
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE),
+  normalizePath(file.path(getwd(), ".."), winslash = "/", mustWork = FALSE)
+))
+repo_root <- candidate_roots[which(vapply(
+  candidate_roots,
+  function(p) file.exists(file.path(p, "DESCRIPTION")) && dir.exists(file.path(p, "analysis")),
+  logical(1)
+))[1]]
+if (is.na(repo_root) || !nzchar(repo_root)) {
+  stop("Could not locate repo root (expected DESCRIPTION and analysis/).")
+}
+
 # ============================================================================
 # MA4 v1.0.1 Core Implementation
 # ============================================================================
@@ -420,8 +444,8 @@ run_ma4_on_pairwise70 <- function(data_dir, output_file = "ma4_results.csv") {
 # RUN ANALYSIS
 # ============================================================================
 
-data_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/data"  # sentinel:skip-line P0-hardcoded-local-path
-output_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis"  # sentinel:skip-line P0-hardcoded-local-path
+data_dir <- file.path(repo_root, "data")
+output_dir <- file.path(repo_root, "analysis")
 
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 

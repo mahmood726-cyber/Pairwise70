@@ -12,6 +12,7 @@ export(cbm_meta)
 export(rbm_meta)
 
 # V4 Methods - Category B: Bias Correction Methods
+export(pbm_meta)
 export(swa_meta)
 export(tas_meta)
 

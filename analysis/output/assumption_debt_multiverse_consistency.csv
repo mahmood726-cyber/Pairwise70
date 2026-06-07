@@ -1,0 +1,2 @@
+total_robustness_checks,directional_checks,directionally_positive_n,directionally_positive_pct,ci_supports_positive_n,ci_supports_positive_pct,pvalue_available_n,pvalue_lt_0_05_n,pvalue_lt_0_05_pct_among_available
+53,52,51,98.0769230769231,45,86.5384615384616,43,37,86.046511627907

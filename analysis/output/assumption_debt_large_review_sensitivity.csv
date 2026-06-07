@@ -1,0 +1,2 @@
+cutoff_quantile,size_cutoff,n_datasets_excluded,n_meta_original,n_meta_retained,pct_meta_retained,OR,OR_low,OR_high,p,OR_cluster,OR_cluster_low,OR_cluster_high,p_cluster
+0.9,19,54,4424,2978,0.673146473779385,1.19543124980702,1.03976216996512,1.37440648861376,0.0121490299983602,1.19543124980702,1.03113490145257,1.38590583152801,0.0179591779495229

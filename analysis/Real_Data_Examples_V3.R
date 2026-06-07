@@ -11,16 +11,40 @@ suppressPackageStartupMessages({
   library(data.table)
 })
 
-source("C:/Users/user/OneDrive - NHS/Documents/Pairwise70/R/advanced_pooling_v3.R")  # sentinel:skip-line P0-hardcoded-local-path
+# Resolve repo root and source methods
+args_full <- commandArgs(trailingOnly = FALSE)
+file_arg_idx <- grep("^--file=", args_full)
+script_path <- if (length(file_arg_idx) > 0) sub("^--file=", "", args_full[file_arg_idx[1]]) else ""
+script_dir <- if (nzchar(script_path)) {
+  normalizePath(dirname(script_path), winslash = "/", mustWork = FALSE)
+} else {
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+}
+candidate_roots <- unique(c(
+  script_dir,
+  normalizePath(file.path(script_dir, ".."), winslash = "/", mustWork = FALSE),
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE),
+  normalizePath(file.path(getwd(), ".."), winslash = "/", mustWork = FALSE)
+))
+repo_root <- candidate_roots[which(vapply(
+  candidate_roots,
+  function(p) file.exists(file.path(p, "DESCRIPTION")) && dir.exists(file.path(p, "analysis")),
+  logical(1)
+))[1]]
+if (is.na(repo_root) || !nzchar(repo_root)) {
+  stop("Could not locate repo root (expected DESCRIPTION and analysis/).")
+}
 
-cat("=" %>% rep(70) %>% paste(collapse = ""), "\n")
+source(file.path(repo_root, "R", "advanced_pooling_v3.R"))
+
+cat(paste(rep("=", 70), collapse = ""), "\n")
 cat("REAL DATA EXAMPLES: ADVANCED POOLING METHODS V3\n")
-cat("=" %>% rep(70) %>% paste(collapse = ""), "\n\n")
+cat(paste(rep("=", 70), collapse = ""), "\n\n")
 
 # === EXAMPLE 1: BCG VACCINE (k=13, Standard Reference) ===
 
 cat("EXAMPLE 1: BCG Vaccine Meta-Analysis\n")
-cat("-" %>% rep(50) %>% paste(collapse = ""), "\n")
+cat(paste(rep("-", 50), collapse = ""), "\n")
 cat("Context: Classic meta-analysis of BCG vaccine effectiveness\n")
 cat("Studies: k=13, moderate heterogeneity (I2~92%)\n\n")
 
@@ -40,7 +64,7 @@ if (sit_bcg$n_trimmed > 0) {
 # === EXAMPLE 2: ANTI-DEPRESSANTS (High Heterogeneity) ===
 
 cat("\n\nEXAMPLE 2: High Heterogeneity Dataset\n")
-cat("-" %>% rep(50) %>% paste(collapse = ""), "\n")
+cat(paste(rep("-", 50), collapse = ""), "\n")
 cat("Context: Simulated high I2 scenario based on antidepressant meta-analyses\n\n")
 
 # Use Normand 1999 data (high heterogeneity)
@@ -61,7 +85,7 @@ print(high_het_comparison)
 # === EXAMPLE 3: SMALL k (k=5) ===
 
 cat("\n\nEXAMPLE 3: Small Sample Meta-Analysis (k=5)\n")
-cat("-" %>% rep(50) %>% paste(collapse = ""), "\n")
+cat(paste(rep("-", 50), collapse = ""), "\n")
 cat("Context: First 5 studies from BCG - demonstrates small k behavior\n\n")
 
 dat_small <- dat_bcg[1:5, ]
@@ -76,7 +100,7 @@ cat("df = k-2 = 3, t(0.975, 3) = 3.18 vs normal z = 1.96\n")
 # === EXAMPLE 4: POTENTIAL OUTLIER ===
 
 cat("\n\nEXAMPLE 4: Meta-Analysis with Potential Outlier\n")
-cat("-" %>% rep(50) %>% paste(collapse = ""), "\n")
+cat(paste(rep("-", 50), collapse = ""), "\n")
 cat("Context: Hart 1999 dataset - one study may be outlying\n\n")
 
 data(dat.hart1999)
@@ -107,7 +131,7 @@ cat(sprintf("SIT estimate: %.4f (SE: %.4f, bootstrap: %s)\n",
 # === EXAMPLE 5: PUBLICATION BIAS PATTERN ===
 
 cat("\n\nEXAMPLE 5: Potential Publication Bias\n")
-cat("-" %>% rep(50) %>% paste(collapse = ""), "\n")
+cat(paste(rep("-", 50), collapse = ""), "\n")
 cat("Context: Raudenbush 1985 - teacher expectancy effects\n\n")
 
 data(dat.raudenbush1985)
@@ -135,9 +159,9 @@ cat(sprintf("\nTrim-and-fill: Added %d studies, adjusted estimate = %.4f\n",
 
 # === SUMMARY TABLE ===
 
-cat("\n\n" %>% rep(70) %>% paste(collapse = ""), "\n")
+cat("\n\n", paste(rep("=", 70), collapse = ""), "\n", sep = "")
 cat("SUMMARY: METHOD PERFORMANCE ACROSS EXAMPLES\n")
-cat("=" %>% rep(70) %>% paste(collapse = ""), "\n\n")
+cat(paste(rep("=", 70), collapse = ""), "\n\n")
 
 examples <- list(
   BCG = list(yi = dat_bcg$yi, vi = dat_bcg$vi, context = "Standard"),
@@ -173,7 +197,7 @@ print(summary_table)
 # === PRACTICAL RECOMMENDATIONS ===
 
 cat("\n\nPRACTICAL RECOMMENDATIONS\n")
-cat("-" %>% rep(50) %>% paste(collapse = ""), "\n")
+cat(paste(rep("-", 50), collapse = ""), "\n")
 
 cat("
 1. For STANDARD meta-analyses (moderate k, low-moderate I2):
@@ -199,7 +223,7 @@ cat("
 
 # === SAVE RESULTS ===
 
-results_dir <- "C:/Users/user/OneDrive - NHS/Documents/Pairwise70/analysis/results"  # sentinel:skip-line P0-hardcoded-local-path
+results_dir <- file.path(repo_root, "analysis", "results")
 if (!dir.exists(results_dir)) dir.create(results_dir, recursive = TRUE)
 
 fwrite(summary_table, file.path(results_dir, "real_data_examples_summary.csv"))
