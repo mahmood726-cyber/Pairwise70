@@ -1,0 +1,2 @@
+n_meta,auc_apparent,auc_cv_5fold,auc_cv_5fold_grouped,brier,calibration_intercept,calibration_slope,calibration_intercept_cv_5fold,calibration_slope_cv_5fold,calibration_intercept_cv_5fold_grouped,calibration_slope_cv_5fold_grouped
+4424,0.681452542390591,0.679419081987307,0.67970738300086,0.215901612639391,7.66410044578135e-10,0.999999982517278,5.68066961570463e-05,0.98311359709901,-0.00108495424584153,0.978172119264707

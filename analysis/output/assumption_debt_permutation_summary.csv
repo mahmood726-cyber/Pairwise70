@@ -1,0 +1,2 @@
+n_perm,n_success,observed_beta,observed_OR,perm_beta_mean,perm_beta_sd,perm_beta_q025,perm_beta_q975,empirical_p_two_sided
+300,300,0.14081167974667,1.15120783181942,0.0792902845397179,0.0419433666722681,0.00211036957599014,0.164869828731032,0.08
