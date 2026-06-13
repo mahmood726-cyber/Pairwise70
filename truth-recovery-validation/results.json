@@ -1,0 +1,98 @@
+{
+  "Q1_coverage_by_class_mu0.3": {
+    "Robust": {
+      "n": 1037,
+      "coverage": 0.5815,
+      "mean_mafi": 0.107,
+      "mean_abs_bias": 0.1069
+    },
+    "Low": {
+      "n": 1740,
+      "coverage": 0.673,
+      "mean_mafi": 0.222,
+      "mean_abs_bias": 0.1204
+    },
+    "Moderate": {
+      "n": 972,
+      "coverage": 0.8724,
+      "mean_mafi": 0.375,
+      "mean_abs_bias": 0.1343
+    },
+    "High": {
+      "n": 251,
+      "coverage": 0.992,
+      "mean_mafi": 0.564,
+      "mean_abs_bias": 0.1104
+    }
+  },
+  "Q2_auroc_predict_CImiss_mu0.3": {
+    "MAFI": 0.3163,
+    "I2_alone": 0.3439,
+    "inv_k_alone": 0.4054,
+    "n": 4000,
+    "miss_rate": 0.2823
+  },
+  "Q3_typeI_capture_mu0_selection": {
+    "n_null": 3200,
+    "spurious_sig_rate": 0.3178,
+    "mean_mafi_spurious": 0.261,
+    "mean_mafi_correct_null": 0.309,
+    "class_dist_spurious": {
+      "Robust": 0.207,
+      "Low": 0.483,
+      "Moderate": 0.234,
+      "High": 0.076
+    },
+    "class_dist_correct_null": {
+      "Robust": 0.148,
+      "Low": 0.38,
+      "Moderate": 0.343,
+      "High": 0.129
+    },
+    "auroc_mafi_flags_spurious": 0.4045
+  },
+  "Q4_pubbias_augmentation_mu0.3": {
+    "auroc_MAFI_alone": 0.3163,
+    "auroc_Egger_abs_t": 0.5938,
+    "auroc_MAFI_PB_risk": 0.6608,
+    "among_MAFI_stable": {
+      "n": 2777,
+      "miss_rate_overall": 0.3612,
+      "n_pb_flagged": 342,
+      "miss_rate_pb_flagged": 0.5058,
+      "miss_rate_pb_not_flagged": 0.3409
+    }
+  },
+  "coverage_by_class_overall": {
+    "Robust": {
+      "n": 1720,
+      "coverage": 0.618
+    },
+    "Low": {
+      "n": 3379,
+      "coverage": 0.6789
+    },
+    "Moderate": {
+      "n": 2206,
+      "coverage": 0.8255
+    },
+    "High": {
+      "n": 695,
+      "coverage": 0.8763
+    }
+  },
+  "_meta": {
+    "reps": 200,
+    "ks": [
+      5,
+      10,
+      15,
+      25
+    ],
+    "tau2": 0.05,
+    "clinical_threshold": 0.2,
+    "n_total": 8000,
+    "seconds": 20.9,
+    "seed": 20260613
+  }
+}
