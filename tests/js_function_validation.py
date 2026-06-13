@@ -3,10 +3,19 @@ JavaScript Statistical Function Validation Test
 Tests the accuracy of all statistical functions in MAFI Calculator
 """
 
-from selenium import webdriver
-from selenium.webdriver.edge.options import Options
 import time
 import math
+
+try:
+    import pytest  # noqa: F401
+    # Optional browser-test dependency; skip cleanly under pytest collection
+    # when selenium (and a real browser) are unavailable.
+    pytest.importorskip("selenium")
+except ImportError:
+    pass
+
+from selenium import webdriver
+from selenium.webdriver.edge.options import Options
 
 def test_js_functions():
     """Test JavaScript statistical functions for accuracy"""

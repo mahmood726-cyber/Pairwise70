@@ -9,7 +9,7 @@
 
 ## Key Features
 
-- **501 Cochrane Reviews**: Largest open collection of standardized meta-analysis datasets
+- **501 Cochrane Reviews**: An open collection of standardized meta-analysis datasets
 - **~50,000+ Individual Studies**: Tens of thousands of randomized controlled trials
 - **Standardized Format**: Consistent column naming and structure across all datasets
 - **Complete Metadata**: Study identifiers, outcomes, interventions, and review DOIs

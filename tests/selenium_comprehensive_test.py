@@ -6,6 +6,16 @@ Tests all functions and UI elements in Chrome browser
 import time
 import json
 import os
+
+try:
+    import pytest  # noqa: F401
+    # Optional browser-test dependencies; skip cleanly under pytest collection
+    # when selenium / webdriver_manager (and a real browser) are unavailable.
+    pytest.importorskip("selenium")
+    pytest.importorskip("webdriver_manager")
+except ImportError:
+    pass
+
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options

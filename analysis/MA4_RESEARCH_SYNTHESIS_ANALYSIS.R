@@ -840,7 +840,7 @@ PART 14: EFFECT SIZE MEASURES
 \n")
 
 # Cohen's f-squared for each predictor
-cat("--- Cohen's fÂ² (local effect sizes) ---\n")
+cat("--- Cohen's f² (local effect sizes) ---\n")
 full_r2 <- summary(best_lm)$r.squared
 
 predictors_to_test <- c("log_k", "effect_type", "log_tau", "abs_theta", "theta_near_zero")
@@ -907,8 +907,8 @@ pub_table <- data.frame(
 
 cat("Table: Predictors of Meta-Analytic Stability (R)\n")
 cat("N =", nrow(d), "meta-analyses\n")
-cat("RÂ² =", sprintf("%.3f", summary(best_lm)$r.squared), "\n")
-cat("Adjusted RÂ² =", sprintf("%.3f", summary(best_lm)$adj.r.squared), "\n\n")
+cat("R² =", sprintf("%.3f", summary(best_lm)$r.squared), "\n")
+cat("Adjusted R² =", sprintf("%.3f", summary(best_lm)$adj.r.squared), "\n\n")
 print(pub_table, row.names = FALSE)
 write.csv(pub_table, file.path(out_dir, "Table8_Publication_Regression.csv"), row.names = FALSE)
 
@@ -943,9 +943,9 @@ cat("  - log(heterogeneity): -0.01 per unit [95% CI: -0.01, -0.01]\n")
 cat("  - log(k) x effect_type interaction: significant (p < 0.001)\n\n")
 
 cat("MODEL PERFORMANCE:\n")
-cat("  - OLS RÂ² = ", round(summary(best_lm)$r.squared, 3), "\n", sep = "")
+cat("  - OLS R² = ", round(summary(best_lm)$r.squared, 3), "\n", sep = "")
 cat("  - 10-fold CV RMSE = ", round(mean(cv_results$OLS_RMSE), 3), "\n", sep = "")
-cat("  - Random Forest test RÂ² = ", round(rf_r2, 3), "\n", sep = "")
+cat("  - Random Forest test R² = ", round(rf_r2, 3), "\n", sep = "")
 cat("  - Bootstrap 95% CIs confirm all key effects\n\n")
 
 cat("VALIDATION:\n")
