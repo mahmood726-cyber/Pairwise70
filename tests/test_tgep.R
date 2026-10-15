@@ -57,6 +57,16 @@ test_that("bootstrap retention excludes failed draws without deleting valid zero
   expect_equal(.tgep_valid_bootstrap(draws), c(0, 1, -2))
 })
 
+
+test_that("TGEP reports uncertainty unavailable rather than recycling unrelated dimensions", {
+  x <- tgep_meta(c(-3, -1, 1, 3), rep(0.03, 4), n_boot = 0)
+  expect_true(is.na(x$se))
+  expect_true(is.na(x$ci_lb))
+  expect_true(is.na(x$ci_ub))
+  expect_true(is.na(x$pvalue))
+  expect_equal(x$uncertainty_status, "not_estimable_from_requested_bootstrap")
+})
+
 cat("
 All TGEP tests passed!
 ")
