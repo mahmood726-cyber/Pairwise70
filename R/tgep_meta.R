@@ -1,3 +1,5 @@
+.tgep_valid_bootstrap <- function(estimates) estimates[is.finite(estimates)]
+
 #' Triple-Guard Ensemble Pooling (TGEP)
 #'
 #' An adaptive, frequentist ensemble method that stacks three specialized guards
@@ -33,10 +35,19 @@ tgep_meta <- function(yi, vi, n_boot = 100, temperature = 1.0) {
       # Robust Spatial Guard
       # (Internal simplified GRMA logic)
       prec <- 1/v; lp <- log(prec + 1)
-      s <- function(x) { r <- diff(range(x)); if(r < 1e-12) 1 else (x-min(x))/r }
-      x_e <- s(y); x_p <- s(lp)
-      a_e <- s(median(y)); a_p <- s(max(lp))
-      d_e <- abs(x_e - a_e); d_p <- abs(x_p - a_p)
+      # Evaluate each anchor using the full study vector's scale.
+      # Scaling median(y) as a singleton incorrectly anchored at max(y).
+      scale_with_anchor <- function(x, anchor) {
+        r <- diff(range(x))
+        if (r < 1e-12) {
+          return(list(values = rep(0, length(x)), anchor = 0))
+        }
+        low <- min(x)
+        list(values = (x - low) / r, anchor = (anchor - low) / r)
+      }
+      e <- scale_with_anchor(y, median(y))
+      p <- scale_with_anchor(lp, max(lp))
+      d_e <- abs(e$values - e$anchor); d_p <- abs(p$values - p$anchor)
       g_e <- (0.5) / (d_e + 0.5); g_p <- (0.5) / (d_p + 0.5)
       w <- (g_e + g_p)/2; w <- w/sum(w)
       sum(w * y)
@@ -81,7 +92,8 @@ tgep_meta <- function(yi, vi, n_boot = 100, temperature = 1.0) {
 
   # 3. Bootstrap SE
   if (n_boot > 0) {
-    boot_est <- numeric(n_boot)
+    # Use NA for failed draws. A legitimate estimate may be exactly zero.
+    boot_est <- rep(NA_real_, n_boot)
     for (b in 1:n_boot) {
       idx <- sample(1:k, k, replace = TRUE)
       try({
@@ -90,11 +102,15 @@ tgep_meta <- function(yi, vi, n_boot = 100, temperature = 1.0) {
         boot_est[b] <- sum(w_ens * e_b)
       }, silent = TRUE)
     }
-    boot_est <- boot_est[is.finite(boot_est) & boot_est != 0]
-    se <- if(length(boot_est) > 5) sd(boot_est) else sqrt(sum(w_ens^2 * (vi + var(yi))))/sqrt(k)
+    boot_est <- .tgep_valid_bootstrap(boot_est)
+    # Without enough valid draws there is no defensible bootstrap SE.
+    se <- if (length(boot_est) > 5) sd(boot_est) else NA_real_
   } else {
-    se <- sqrt(sum(w_ens^2 * (vi + var(yi))))/sqrt(k)
+    # Three ensemble weights cannot be recycled over k study variances.
+    # n_boot = 0 supplies a point estimate only, not a calibrated SE.
+    se <- NA_real_
   }
+  if (!is.finite(se) || se <= 0) se <- NA_real_
 
   list(
     estimate = estimate,
@@ -103,6 +119,7 @@ tgep_meta <- function(yi, vi, n_boot = 100, temperature = 1.0) {
     ci_ub = estimate + 1.96 * se,
     pvalue = 2 * (1 - pnorm(abs(estimate / se))),
     method = "TGEP",
+    uncertainty_status = if (is.na(se)) "not_estimable_from_requested_bootstrap" else "fixed_stack_bootstrap",
     k = k,
     ensemble_weights = w_ens,
     guard_estimates = est_guards,
