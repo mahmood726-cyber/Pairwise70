@@ -103,10 +103,14 @@ tgep_meta <- function(yi, vi, n_boot = 100, temperature = 1.0) {
       }, silent = TRUE)
     }
     boot_est <- .tgep_valid_bootstrap(boot_est)
-    se <- if(length(boot_est) > 5) sd(boot_est) else sqrt(sum(w_ens^2 * (vi + var(yi))))/sqrt(k)
+    # Without enough valid draws there is no defensible bootstrap SE.
+    se <- if (length(boot_est) > 5) sd(boot_est) else NA_real_
   } else {
-    se <- sqrt(sum(w_ens^2 * (vi + var(yi))))/sqrt(k)
+    # Three ensemble weights cannot be recycled over k study variances.
+    # n_boot = 0 supplies a point estimate only, not a calibrated SE.
+    se <- NA_real_
   }
+  if (!is.finite(se) || se <= 0) se <- NA_real_
 
   list(
     estimate = estimate,
@@ -115,6 +119,7 @@ tgep_meta <- function(yi, vi, n_boot = 100, temperature = 1.0) {
     ci_ub = estimate + 1.96 * se,
     pvalue = 2 * (1 - pnorm(abs(estimate / se))),
     method = "TGEP",
+    uncertainty_status = if (is.na(se)) "not_estimable_from_requested_bootstrap" else "fixed_stack_bootstrap",
     k = k,
     ensemble_weights = w_ens,
     guard_estimates = est_guards,
