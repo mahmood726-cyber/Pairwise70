@@ -33,10 +33,19 @@ tgep_meta <- function(yi, vi, n_boot = 100, temperature = 1.0) {
       # Robust Spatial Guard
       # (Internal simplified GRMA logic)
       prec <- 1/v; lp <- log(prec + 1)
-      s <- function(x) { r <- diff(range(x)); if(r < 1e-12) 1 else (x-min(x))/r }
-      x_e <- s(y); x_p <- s(lp)
-      a_e <- s(median(y)); a_p <- s(max(lp))
-      d_e <- abs(x_e - a_e); d_p <- abs(x_p - a_p)
+      # Evaluate each anchor using the full study vector's scale.
+      # Scaling median(y) as a singleton incorrectly anchored at max(y).
+      scale_with_anchor <- function(x, anchor) {
+        r <- diff(range(x))
+        if (r < 1e-12) {
+          return(list(values = rep(0, length(x)), anchor = 0))
+        }
+        low <- min(x)
+        list(values = (x - low) / r, anchor = (anchor - low) / r)
+      }
+      e <- scale_with_anchor(y, median(y))
+      p <- scale_with_anchor(lp, max(lp))
+      d_e <- abs(e$values - e$anchor); d_p <- abs(p$values - p$anchor)
       g_e <- (0.5) / (d_e + 0.5); g_p <- (0.5) / (d_p + 0.5)
       w <- (g_e + g_p)/2; w <- w/sum(w)
       sum(w * y)
