@@ -51,6 +51,12 @@ test_that("GRMA returns the common value for identical effects", {
   expect_equal(unname(x$guard_estimates[["GRMA"]]), 2, tolerance = 1e-10)
 })
 
+
+test_that("bootstrap retention excludes failed draws without deleting valid zero estimates", {
+  draws <- c(NA_real_, 0, 1, NaN, -2, Inf, -Inf)
+  expect_equal(.tgep_valid_bootstrap(draws), c(0, 1, -2))
+})
+
 cat("
 All TGEP tests passed!
 ")
