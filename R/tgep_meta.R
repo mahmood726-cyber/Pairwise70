@@ -1,3 +1,5 @@
+.tgep_valid_bootstrap <- function(estimates) estimates[is.finite(estimates)]
+
 #' Triple-Guard Ensemble Pooling (TGEP)
 #'
 #' An adaptive, frequentist ensemble method that stacks three specialized guards
@@ -90,7 +92,8 @@ tgep_meta <- function(yi, vi, n_boot = 100, temperature = 1.0) {
 
   # 3. Bootstrap SE
   if (n_boot > 0) {
-    boot_est <- numeric(n_boot)
+    # Use NA for failed draws. A legitimate estimate may be exactly zero.
+    boot_est <- rep(NA_real_, n_boot)
     for (b in 1:n_boot) {
       idx <- sample(1:k, k, replace = TRUE)
       try({
@@ -99,7 +102,7 @@ tgep_meta <- function(yi, vi, n_boot = 100, temperature = 1.0) {
         boot_est[b] <- sum(w_ens * e_b)
       }, silent = TRUE)
     }
-    boot_est <- boot_est[is.finite(boot_est) & boot_est != 0]
+    boot_est <- .tgep_valid_bootstrap(boot_est)
     se <- if(length(boot_est) > 5) sd(boot_est) else sqrt(sum(w_ens^2 * (vi + var(yi))))/sqrt(k)
   } else {
     se <- sqrt(sum(w_ens^2 * (vi + var(yi))))/sqrt(k)
