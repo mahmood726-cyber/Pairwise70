@@ -30,4 +30,4 @@ jobs:
       - name: Install test dependencies
         run: Rscript -e 'install.packages(c("metafor", "testthat"), repos = getOption("repos"))'
       - name: Execute TGEP R regressions
-        run: Rscript -e 'testthat::test_file("tests/test_tgep.R", reporter = testthat::StopReporter$new())'
+        run: Rscript -e 'options(warn = 2); testthat::test_file("tests/test_tgep.R", reporter = testthat::StopReporter$new())'
