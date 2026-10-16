@@ -12,6 +12,28 @@
 #' @return A list containing the pooled estimate, standard error, and ensemble diagnostics.
 #' @export
 tgep_meta <- function(yi, vi, n_boot = 100, temperature = 1.0) {
+  # Effects and variances must be paired one-to-one. Silent R recycling
+  # can otherwise change study membership without an explicit error.
+  if (!is.numeric(yi) || !is.null(dim(yi)) || length(yi) < 2L ||
+      any(!is.finite(yi))) {
+    stop("TGEP input: yi must be a vector with at least two finite numeric effects",
+         call. = FALSE)
+  }
+  if (!is.numeric(vi) || !is.null(dim(vi)) || length(vi) != length(yi) ||
+      any(!is.finite(vi)) || any(vi <= 0)) {
+    stop("TGEP input: vi must contain one finite, strictly positive variance per effect",
+         call. = FALSE)
+  }
+  if (!is.numeric(n_boot) || length(n_boot) != 1L ||
+      !is.finite(n_boot) || n_boot < 0 || n_boot != floor(n_boot)) {
+    stop("TGEP input: n_boot must be one finite nonnegative integer",
+         call. = FALSE)
+  }
+  if (!is.numeric(temperature) || length(temperature) != 1L ||
+      !is.finite(temperature) || temperature <= 0) {
+    stop("TGEP input: temperature must be one finite strictly positive number",
+         call. = FALSE)
+  }
   k <- length(yi)
   
   # Minimum k check: fall back to HKSJ if k < 4
