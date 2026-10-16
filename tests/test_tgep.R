@@ -67,6 +67,43 @@ test_that("TGEP reports uncertainty unavailable rather than recycling unrelated 
   expect_equal(x$uncertainty_status, "not_estimable_from_requested_bootstrap")
 })
 
+
+test_that("TGEP rejects malformed vectors and invalid tuning controls", {
+  yi <- c(-0.2, 0.1, 0.3, 0.4)
+  vi <- rep(0.02, 4)
+  invalid <- list(
+    list(yi=yi, vi=rep(0.02, 8)),
+    list(yi=yi, vi=rep(0.02, 2)),
+    list(yi=yi, vi=c(0.02, 0, 0.02, 0.02)),
+    list(yi=yi, vi=c(0.02, -0.1, 0.02, 0.02)),
+    list(yi=yi, vi=c(0.02, NA_real_, 0.02, 0.02)),
+    list(yi=c(yi[1:3], Inf), vi=vi),
+    list(yi=yi[1], vi=vi[1]),
+    list(yi=matrix(yi, nrow=2), vi=vi),
+    list(yi=yi, vi=vi, temperature=0),
+    list(yi=yi, vi=vi, temperature=-1),
+    list(yi=yi, vi=vi, temperature=Inf),
+    list(yi=yi, vi=vi, n_boot=-1),
+    list(yi=yi, vi=vi, n_boot=2.5),
+    list(yi=yi, vi=vi, n_boot=NA_real_),
+    list(yi=yi, vi=vi, n_boot=Inf)
+  )
+  for (i in seq_along(invalid)) {
+    expect_error(do.call(tgep_meta, invalid[[i]]),
+                 regexp="^TGEP input:", info=paste("input case", i))
+  }
+})
+
+test_that("valid TGEP inputs retain finite point estimate and honest missing SE", {
+  yi <- c(-0.2, 0.1, 0.3, 0.4)
+  vi <- rep(0.02, 4)
+  x <- tgep_meta(yi, vi, n_boot=0, temperature=1)
+  expect_true(is.finite(x$estimate))
+  expect_equal(x$k, length(yi))
+  expect_true(is.na(x$se))
+  expect_identical(x$uncertainty_status, "not_estimable_from_requested_bootstrap")
+})
+
 cat("
 All TGEP tests passed!
 ")
