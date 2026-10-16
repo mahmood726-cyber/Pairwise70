@@ -133,8 +133,15 @@ grma_meta <- function(yi, vi,
     delta_min <- min(all_deltas)
     delta_max <- max(all_deltas)
 
-    grc_eff <- (delta_min + zeta * delta_max) / (delta_eff + zeta * delta_max)
-    grc_pre <- (delta_min + zeta * delta_max) / (delta_pre + zeta * delta_max)
+    # If both features are constant all grey distances vanish. The ordinary
+    # coefficient formula is then 0/0, not evidence of dissimilarity.
+    if (delta_max == 0) {
+      grc_eff <- rep(1.0, n)
+      grc_pre <- rep(1.0, n)
+    } else {
+      grc_eff <- (delta_min + zeta * delta_max) / (delta_eff + zeta * delta_max)
+      grc_pre <- (delta_min + zeta * delta_max) / (delta_pre + zeta * delta_max)
+    }
 
     grade <- (grc_eff + grc_pre) / 2.0
 
